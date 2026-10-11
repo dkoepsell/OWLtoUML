@@ -143,6 +143,23 @@ function centerOn(el) {
   panZoom.panBy({ x: dx, y: dy });
 }
 
+// Refit after classes moved: the drawing's bounds have changed.
+function refit() {
+  if (!panZoom) return;
+  panZoom.updateBBox();
+  panZoom.resize();
+  panZoom.fit();
+  panZoom.center();
+}
+
+// Stretch the layout to the viewport's shape so it fills the empty bands.
+function spreadToFit() {
+  if (!interact || !svgEl) return;
+  const r = svgEl.getBoundingClientRect();
+  if (interact.spread(r.width / r.height)) refit();
+  else setStatus("Diagram already fills the window");
+}
+
 function step(delta) {
   if (!matches.length) return;
   matchIdx = (matchIdx + delta + matches.length) % matches.length;
@@ -174,6 +191,13 @@ async function downloadSvg() {
   const live = svgEl.querySelector(".svg-pan-zoom_viewport") || svgEl;
   for (const child of live.childNodes) {
     out.appendChild(doc.importNode(child, true));
+  }
+  // A spread or dragged layout can outgrow the original canvas.
+  const b = interact && interact.bounds();
+  if (b) {
+    out.setAttribute("viewBox", `${b.x} ${b.y} ${b.width} ${b.height}`);
+    out.setAttribute("width", `${b.width}pt`);
+    out.setAttribute("height", `${b.height}pt`);
   }
   out.querySelectorAll("style.oi-style, path.oi-hit").forEach((n) => n.remove());
   out.querySelectorAll(".oi-hl, .oi-sel, .oi-drag, .node--hit, .node--current")
@@ -242,12 +266,15 @@ window.addEventListener("DOMContentLoaded", () => {
   $("prev").addEventListener("click", () => step(-1));
   $("zoomIn").addEventListener("click", () => panZoom && panZoom.zoomIn());
   $("zoomOut").addEventListener("click", () => panZoom && panZoom.zoomOut());
-  $("fit").addEventListener("click", () => {
-    if (panZoom) { panZoom.resize(); panZoom.fit(); panZoom.center(); }
-  });
+  $("fit").addEventListener("click", refit);
   $("download").addEventListener("click", downloadSvg);
   $("clearFocus").addEventListener("click", () => interact && interact.clear());
-  $("resetLayout").addEventListener("click", () => interact && interact.reset());
+  $("spread").addEventListener("click", spreadToFit);
+  $("resetLayout").addEventListener("click", () => {
+    if (!interact) return;
+    interact.reset();
+    refit();
+  });
 
   window.addEventListener("resize", () => {
     if (panZoom) panZoom.resize();

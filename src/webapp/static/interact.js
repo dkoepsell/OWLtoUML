@@ -145,6 +145,72 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       }
     }
 
+    // Graphviz paints the canvas as the top-level graph's first polygon.
+    const graphG = svg.querySelector("g.graph");
+    const bg = graphG && graphG.querySelector(":scope > polygon");
+    const bgPoints = bg && bg.getAttribute("points");
+    const PAD = 12;  // canvas margin kept around classes moved past its edge
+
+    // Centre and size of each class box, including its drag offset.
+    const boxes = () => [...nodes.values()].map((n) => {
+      const b = n.g.getBBox();
+      return { n, x: b.x + b.width / 2 + n.off[0], y: b.y + b.height / 2 + n.off[1], w: b.width, h: b.height };
+    });
+    const extent = (bs) => [
+      Math.min(...bs.map((b) => b.x - b.w / 2)), Math.min(...bs.map((b) => b.y - b.h / 2)),
+      Math.max(...bs.map((b) => b.x + b.w / 2)), Math.max(...bs.map((b) => b.y + b.h / 2)),
+    ];
+
+    // Enlarge the background so it still covers every class (never shrinks
+    // below Graphviz's original canvas).
+    function fitCanvas() {
+      if (!bg) return;
+      const o = pairs(tokens(bgPoints));
+      const [x0, y0, x1, y1] = extent(boxes());
+      const l = Math.min(x0 - PAD, ...o.map((p) => p[0])), r = Math.max(x1 + PAD, ...o.map((p) => p[0]));
+      const t = Math.min(y0 - PAD, ...o.map((p) => p[1])), b = Math.max(y1 + PAD, ...o.map((p) => p[1]));
+      bg.setAttribute("points", [[l, b], [l, t], [r, t], [r, b], [l, b]].map(fmt).join(" "));
+    }
+
+    // Stretch class positions along one axis so the drawing takes on the given
+    // width/height ratio (e.g. the window's). A one-axis stretch keeps every
+    // class on the same side of every other -- ranks, order, arrow directions
+    // -- and only adds space, so nothing new overlaps. Builds on the current
+    // positions, so dragged classes keep their relative placement.
+    function spread(aspect) {
+      const bs = boxes();
+      if (bs.length < 2 || !(aspect > 0)) return false;
+      const [x0, y0, x1, y1] = extent(bs);
+      const W = x1 - x0, H = y1 - y0;
+      const ax = W / H > aspect ? "y" : "x";
+      const cs = bs.map((b) => b[ax]);
+      const lo = Math.min(...cs), hi = Math.max(...cs), span = hi - lo;
+      if (span < 1) return false;
+      // Box sizes at the two ends don't stretch; only the gaps between centres do.
+      const want = ax === "y" ? W / aspect : H * aspect;
+      const k = (want - ((ax === "y" ? H : W) - span)) / span;
+      if (k < 1.02) return false;
+      const mid = (lo + hi) / 2, i = ax === "y" ? 1 : 0;
+      for (const b of bs) {
+        b.n.off[i] += (b[ax] - mid) * (k - 1);
+        placeNode(b.n);
+      }
+      edges.forEach(redraw);
+      fitCanvas();
+      return true;
+    }
+
+    // Canvas rectangle in root <svg> coordinates (for a download's viewBox).
+    function bounds() {
+      if (!bg) return null;
+      const r = bg.getBBox();
+      const t = graphG.transform.baseVal.consolidate();
+      const m = t ? t.matrix : svg.createSVGMatrix();
+      const a = new DOMPoint(r.x, r.y).matrixTransform(m);
+      const c = new DOMPoint(r.x + r.width, r.y + r.height).matrixTransform(m);
+      return { x: Math.min(a.x, c.x), y: Math.min(a.y, c.y), width: Math.abs(c.x - a.x), height: Math.abs(c.y - a.y) };
+    }
+
     function reset() {
       nodes.forEach((n) => {
         n.off = [0, 0];
@@ -156,6 +222,7 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
         e.polys.forEach((p) => p.el.setAttribute("points", p.points));
         e.texts.forEach((t) => { t.el.setAttribute("x", t.x); t.el.setAttribute("y", t.y); });
       });
+      if (bg) bg.setAttribute("points", bgPoints);
     }
 
     // ---- focus ------------------------------------------------------------
@@ -267,6 +334,7 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       drag.n.off = [drag.off[0] + p.x - drag.x, drag.off[1] + p.y - drag.y];
       placeNode(drag.n);
       drag.n.edges.forEach(redraw);
+      fitCanvas();
     }
 
     function onUp() {
@@ -324,6 +392,8 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       idOf: (g) => titleOf(g),
       clear,
       reset,
+      spread,
+      bounds,
       destroy() {
         swallowed.forEach((t) => svg.removeEventListener(t, swallow, true));
         svg.removeEventListener("pointerdown", onDown, true);

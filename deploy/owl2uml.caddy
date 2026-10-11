@@ -1,0 +1,20 @@
+# owl2uml site block — append to /etc/caddy/Caddyfile.
+# Separate domain from the existing bfo-agent site, so it is fully independent.
+# Caddy auto-provisions a Let's Encrypt cert once the DNS A record resolves.
+owltouml.davidkoepsell.com {
+	# Static assets served straight from disk.
+	handle_path /static/* {
+		root * /opt/owl2uml/src/webapp/static
+		file_server
+	}
+
+	# Everything else proxied to the gunicorn app on 5002.
+	reverse_proxy 127.0.0.1:5002
+
+	# Match the app's upload cap (25 MB) with headroom.
+	request_body {
+		max_size 30MB
+	}
+
+	encode gzip
+}

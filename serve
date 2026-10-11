@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Launch the owl2uml web UI.
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+py="$here/.venv/bin/python"
+[ -x "$py" ] || py="python3"
+exec "$py" "$here/src/webapp/server.py"

@@ -1,0 +1,9 @@
+.venv/
+.local/
+__pycache__/
+*.pyc
+.claude/
+.claude-flow/
+.swarm/
+.hive-mind/
+node_modules/

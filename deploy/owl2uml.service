@@ -1,0 +1,26 @@
+[Unit]
+Description=owl2uml web UI (Flask via gunicorn)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/owl2uml/src
+Environment=PORT=5002
+Environment=MAX_UPLOAD_MB=25
+ExecStart=/opt/owl2uml/.venv/bin/gunicorn \
+    --workers 3 --timeout 120 \
+    --bind 127.0.0.1:5002 \
+    webapp.server:app
+Restart=on-failure
+RestartSec=3
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/tmp
+
+[Install]
+WantedBy=multi-user.target

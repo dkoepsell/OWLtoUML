@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OWL → UML</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script defer src="/static/vendor/svg-pan-zoom.min.js"></script>
+  <script defer src="/static/interact.js"></script>
+  <script defer src="/static/app.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">OWL&nbsp;<span>→</span>&nbsp;UML</div>
+    <div class="toolbar" id="toolbar" hidden>
+      <input type="search" id="search" placeholder="Find a class…" autocomplete="off" />
+      <button id="prev" title="Previous match">&#8249;</button>
+      <button id="next" title="Next match">&#8250;</button>
+      <span class="sep"></span>
+      <button id="zoomOut" title="Zoom out">&minus;</button>
+      <button id="fit" title="Fit to view">Fit</button>
+      <button id="zoomIn" title="Zoom in">&plus;</button>
+      <span class="sep"></span>
+      <button id="clearFocus" title="Clear highlighted classes (Esc)">Clear focus</button>
+      <button id="resetLayout" title="Put dragged classes back">Reset layout</button>
+      <span class="sep"></span>
+      <button id="open" title="Open another ontology">Open…</button>
+      <button id="download" title="Download SVG">Download SVG</button>
+    </div>
+  </header>
+
+  <main id="stage">
+    <section id="dropzone" class="dropzone">
+      <div class="drop-inner">
+        <div class="drop-icon">⬇</div>
+        <h1>Drop an ontology to diagram it</h1>
+        <p>OWL/RDF-XML · TTL · RDF/XML · N3 · N-Triples · JSON-LD · TriG</p>
+        <p class="hint">OWL/XML (.owx), Manchester (.omn) and Functional (.ofn) syntax are not supported — re-export as RDF/XML or Turtle.</p>
+        <label class="filebtn">
+          Choose file
+          <input type="file" id="file" accept=".owl,.ttl,.rdf,.xml,.n3,.nt,.jsonld,.json,.trig" hidden />
+        </label>
+        <div class="fmtrow">
+          <label for="format">Format</label>
+          <select id="format">
+            <option value="auto">auto-detect</option>
+            <option value="turtle">turtle</option>
+            <option value="xml">rdf/xml</option>
+            <option value="n3">n3</option>
+            <option value="nt">n-triples</option>
+            <option value="json-ld">json-ld</option>
+            <option value="trig">trig</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <div id="viewport" class="viewport" hidden></div>
+
+    <div id="overlay" class="overlay" hidden>
+      <div class="spinner"></div>
+      <div id="overlayMsg">Parsing &amp; laying out…</div>
+    </div>
+  </main>
+
+  <footer id="status">
+    <span id="statusText">Ready.</span>
+    <span class="hint" id="hint" hidden>hover: neighbours · click: pin · click again: widen · drag: move · click a line: jump · Esc: clear</span>
+    <a href="/about" class="about-link">About the algorithms</a>
+  </footer>
+</body>
+</html>

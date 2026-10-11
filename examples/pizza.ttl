@@ -1,0 +1,39 @@
+@prefix :    <http://example.org/pizza#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:<http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+:Food        a owl:Class .
+:Pizza       a owl:Class ; rdfs:subClassOf :Food .
+:PizzaBase   a owl:Class ; rdfs:subClassOf :Food .
+:PizzaTopping a owl:Class ; rdfs:subClassOf :Food .
+:MeatTopping  a owl:Class ; rdfs:subClassOf :PizzaTopping .
+:CheeseTopping a owl:Class ; rdfs:subClassOf :PizzaTopping .
+:VegetableTopping a owl:Class ; rdfs:subClassOf :PizzaTopping .
+:Margherita  a owl:Class ; rdfs:subClassOf :Pizza .
+:Country     a owl:Class .
+
+:hasTopping  a owl:ObjectProperty ;
+    rdfs:domain :Pizza ;
+    rdfs:range  :PizzaTopping .
+
+:hasBase     a owl:ObjectProperty ;
+    rdfs:domain :Pizza ;
+    rdfs:range  :PizzaBase .
+
+:hasOrigin   a owl:ObjectProperty ;
+    rdfs:domain :Pizza ;
+    rdfs:range  :Country .
+
+:hasName     a owl:DatatypeProperty ;
+    rdfs:domain :Food ;
+    rdfs:range  xsd:string .
+
+:priceUSD    a owl:DatatypeProperty ;
+    rdfs:domain :Pizza ;
+    rdfs:range  xsd:decimal .
+
+:isVegetarian a owl:DatatypeProperty ;
+    rdfs:domain :Pizza ;
+    rdfs:range  xsd:boolean .

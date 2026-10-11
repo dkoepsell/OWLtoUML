@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OWL → UML · Scholarly basis</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .about {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      color: #26241f;
+      line-height: 1.55;
+    }
+    .about a { color: #3a5a8c; }
+    .about h1 { font-size: 1.6rem; margin: 0 0 .3rem; }
+    .about h2 {
+      font-size: 1.15rem;
+      margin: 2.2rem 0 .4rem;
+      border-bottom: 1px solid #e2ddd2;
+      padding-bottom: .3rem;
+    }
+    .about .lede { color: #7a756b; margin: 0 0 1rem; }
+    .about code {
+      background: #efece3;
+      padding: .1em .35em;
+      border-radius: 3px;
+      font-size: .9em;
+    }
+    .about ul { padding-left: 1.2rem; }
+    .about li { margin: .5rem 0; }
+    .about .cite-role { color: #7a756b; }
+    .about .caveat {
+      margin-top: 2.5rem;
+      padding: 1rem 1.2rem;
+      background: #efece3;
+      border-left: 3px solid #3a5a8c;
+      border-radius: 4px;
+      color: #45413a;
+      font-size: .95em;
+    }
+    .about .back { display: inline-block; margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">OWL&nbsp;<span>→</span>&nbsp;UML</div>
+  </header>
+
+  <main class="about">
+    <a class="back" href="/">&#8249; Back to the diagrammer</a>
+    <h1>Scholarly basis for the translation algorithms</h1>
+    <p class="lede">
+      This tool does three distinct jobs, each grounded in established research.
+      The references support the <em>approaches</em> taken; the code implements
+      simplified variants where noted.
+    </p>
+
+    <h2>1. OWL/RDFS → UML mapping</h2>
+    <p>
+      OWL classes become UML classes, <code>rdfs:subClassOf</code> becomes
+      generalization, an <code>owl:ObjectProperty</code> with a class range
+      becomes an association, an <code>owl:DatatypeProperty</code> becomes an
+      attribute, and <code>rdfs:label</code> supplies readable names — the
+      correspondences formalized in the ontology-to-UML literature.
+    </p>
+    <ul>
+      <li><strong>OMG (2014).</strong> <em>Ontology Definition Metamodel (ODM),
+        Version 1.1.</em> Object Management Group.
+        <span class="cite-role">— The canonical, standardized OWL/RDFS ↔ UML/MOF
+        mapping; the primary reference for the parse rules.</span></li>
+      <li><strong>Brockmans, S., Volz, R., Eberhart, A., &amp; Löffler, P.
+        (2004).</strong> "Visual Modeling of OWL DL Ontologies Using UML."
+        <em>ISWC 2004</em>, LNCS 3298, 198–213. Springer.</li>
+      <li><strong>Cranefield, S. (2001).</strong> "UML and the Semantic Web."
+        <em>Proc. Int'l Semantic Web Working Symposium (SWWS).</em></li>
+      <li><strong>Baclawski, K., Kokar, M. K., Kogut, P. A., et al.
+        (2002).</strong> "Extending the Unified Modeling Language for ontology
+        development." <em>Software and Systems Modeling</em>, 1(2), 142–156.</li>
+      <li><strong>Kogut, P., Cranefield, S., Hart, L., et al. (2002).</strong>
+        "UML for ontology development." <em>The Knowledge Engineering
+        Review</em>, 17(1), 61–64.</li>
+      <li><strong>Gašević, D., Djurić, D., &amp; Devedžić, V. (2009).</strong>
+        <em>Model Driven Engineering and Ontology Development</em> (2nd ed.).
+        Springer.</li>
+    </ul>
+
+    <h2>2. Layered layout (layer assignment &amp; Graphviz <code>dot</code>)</h2>
+    <p>
+      Each class's rank is computed as <code>1 + max(parent depths)</code> over
+      generalization edges — textbook longest-path layering within the Sugiyama
+      layered-drawing framework, which Graphviz <code>dot</code> also implements.
+    </p>
+    <ul>
+      <li><strong>Sugiyama, K., Tagawa, S., &amp; Toda, M. (1981).</strong>
+        "Methods for visual understanding of hierarchical system structures."
+        <em>IEEE Trans. Systems, Man, and Cybernetics</em>, 11(2), 109–125.
+        <span class="cite-role">— Origin of hierarchical/layered layout.</span></li>
+      <li><strong>Gansner, E. R., Koutsofios, E., North, S. C., &amp; Vo, K.-P.
+        (1993).</strong> "A technique for drawing directed graphs." <em>IEEE
+        Trans. Software Engineering</em>, 19(3), 214–230.
+        <span class="cite-role">— The algorithm behind <code>dot</code>.</span></li>
+      <li><strong>Di Battista, G., Eades, P., Tamassia, R., &amp; Tollis, I. G.
+        (1999).</strong> <em>Graph Drawing: Algorithms for the Visualization of
+        Graphs.</em> Prentice Hall.</li>
+    </ul>
+
+    <h2>3. Scalable force-directed fallback (<code>sfdp</code>)</h2>
+    <p>
+      Above ~500 classes the renderer switches from <code>dot</code> to
+      <code>sfdp</code>, a multilevel force-directed engine.
+    </p>
+    <ul>
+      <li><strong>Hu, Y. (2005).</strong> "Efficient, high-quality
+        force-directed graph drawing." <em>The Mathematica Journal</em>, 10(1),
+        37–71. <span class="cite-role">— The multilevel algorithm
+        <code>sfdp</code> is based on.</span></li>
+      <li><strong>Fruchterman, T. M. J., &amp; Reingold, E. M. (1991).</strong>
+        "Graph drawing by force-directed placement." <em>Software: Practice and
+        Experience</em>, 21(11), 1129–1164.</li>
+      <li><strong>Ellson, J., Gansner, E., Koutsofios, L., North, S. C., &amp;
+        Woodhull, G. (2002).</strong> "Graphviz — Open Source Graph Drawing
+        Tools." <em>Graph Drawing (GD 2001)</em>, LNCS 2265, 483–484. Springer.</li>
+    </ul>
+
+    <p class="caveat">
+      The code implements simplified versions of these methods (e.g.
+      longest-path layering rather than <code>dot</code>'s full network-simplex
+      ranking in the built-in layout pass). The <strong>ODM</strong> and
+      <strong>Brockmans et al.</strong> are the primary references for the core
+      OWL→UML mapping.
+    </p>
+  </main>
+</body>
+</html>

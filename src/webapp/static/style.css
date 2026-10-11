@@ -1,0 +1,187 @@
+:root {
+  --bg: #f7f5ef;
+  --panel: #ffffff;
+  --ink: #26241f;
+  --muted: #7a756b;
+  --line: #e2ddd1;
+  --accent: #3a5a8c;
+  --accent-ink: #2b4467;
+  --hi: #ffd24a;
+}
+
+* { box-sizing: border-box; }
+
+/* The `hidden` attribute must win over component `display` rules below
+   (.overlay/.toolbar/.viewport/.dropzone all set an explicit display). */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+body { display: flex; flex-direction: column; height: 100vh; }
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.6rem 1rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  z-index: 5;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+.brand span { color: var(--accent); }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+}
+.toolbar .sep {
+  width: 1px;
+  height: 22px;
+  background: var(--line);
+  margin: 0 0.35rem;
+}
+
+#search {
+  flex: 0 1 260px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  outline: none;
+}
+#search:focus { border-color: var(--accent); }
+
+button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.38rem 0.7rem;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+button:hover { background: #f0ece2; border-color: #cfc8ba; }
+#download {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+#download:hover { background: var(--accent-ink); }
+
+main#stage { position: relative; flex: 1; overflow: hidden; }
+
+.dropzone {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+.dropzone.dragover .drop-inner {
+  border-color: var(--accent);
+  background: #eef2f8;
+}
+.drop-inner {
+  border: 2px dashed var(--line);
+  border-radius: 16px;
+  padding: 3rem 4rem;
+  text-align: center;
+  background: var(--panel);
+  transition: border-color 0.15s, background 0.15s;
+}
+.drop-icon { font-size: 2.4rem; color: var(--accent); }
+.drop-inner h1 { font-size: 1.3rem; margin: 0.6rem 0 0.2rem; }
+.drop-inner p { color: var(--muted); margin: 0 0 1.4rem; font-size: 0.9rem; }
+.drop-inner p.hint { font-size: 0.78rem; opacity: 0.8; margin: -0.9rem 0 1.4rem; }
+
+.filebtn {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+.filebtn:hover { background: var(--accent-ink); }
+
+.fmtrow {
+  margin-top: 1.2rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.fmtrow select {
+  font: inherit;
+  margin-left: 0.4rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.viewport { position: absolute; inset: 0; }
+.viewport svg { width: 100%; height: 100%; display: block; }
+
+/* search highlight */
+.node--hit polygon,
+.node--hit path { stroke: var(--accent) !important; stroke-width: 3px !important; }
+.node--current polygon:first-of-type { fill: var(--hi) !important; }
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: rgba(247, 245, 239, 0.82);
+  backdrop-filter: blur(2px);
+  z-index: 10;
+  color: var(--muted);
+}
+.spinner {
+  width: 38px;
+  height: 38px;
+  border: 4px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+footer#status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 1rem;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+footer#status.error { color: #b3261e; }
+footer#status .hint { flex: 1; text-align: center; opacity: 0.8; }
+footer#status .about-link {
+  color: var(--accent, #3a5a8c);
+  text-decoration: none;
+  white-space: nowrap;
+}
+footer#status .about-link:hover { text-decoration: underline; }

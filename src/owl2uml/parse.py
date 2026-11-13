@@ -1,7 +1,8 @@
 """Parse an OWL/RDFS ontology (any rdflib-supported format) into a UModel."""
 from __future__ import annotations
 
-from rdflib import Graph, RDF, RDFS, OWL, URIRef, BNode
+from rdflib import Graph, RDF, RDFS, OWL, URIRef, BNode, Literal
+from rdflib.collection import Collection
 from rdflib.namespace import XSD
 
 from .bfo_labels import BFO_LABELS
@@ -106,11 +107,101 @@ def _parse_graph(path: str, fmt: str | None) -> Graph:
     )
 
 
+
+# ---------------------------------------------------------------------------
+# Class expressions
+#
+# OWL ontologies say much of what they mean in anonymous class expressions:
+# a *defined* class is owl:equivalentClass to an intersection ("a sanction is
+# a legal position that sanctions some legal position"), and necessary
+# conditions are restrictions under rdfs:subClassOf ("every legal order has
+# some recognition criterion"). Reading only named superclasses leaves defined
+# classes with no edges at all, so they float, disconnected, at the edge of
+# the drawing. The helpers below turn those expressions into diagram edges.
+# ---------------------------------------------------------------------------
+
+def _members(g: Graph, node, pred) -> list:
+    """Items of an RDF list hanging off ``node`` via ``pred`` (e.g. owl:intersectionOf)."""
+    lst = g.value(node, pred)
+    if lst is None:
+        return []
+    try:
+        return list(Collection(g, lst))
+    except Exception:  # noqa: BLE001 - malformed list
+        return []
+
+
+def _prop_name(g: Graph, p, labels) -> str:
+    """Readable name for a restriction's property, including owl:inverseOf."""
+    if isinstance(p, BNode):
+        inv = g.value(p, OWL.inverseOf)
+        return f"inverse {_display(inv, labels)}" if inv is not None else ""
+    return _display(p, labels)
+
+
+def _restriction(g: Graph, r, labels):
+    """(property name, quantifier, filler) for an owl:Restriction, or None."""
+    prop = g.value(r, OWL.onProperty)
+    if prop is None:
+        return None
+    pname = _prop_name(g, prop, labels)
+    for pred, q in ((OWL.someValuesFrom, "some"), (OWL.allValuesFrom, "only")):
+        filler = g.value(r, pred)
+        if filler is not None:
+            return pname, q, filler
+    for pred, q in ((OWL.minQualifiedCardinality, "min"), (OWL.maxQualifiedCardinality, "max"),
+                    (OWL.qualifiedCardinality, "exactly")):
+        n = g.value(r, pred)
+        if n is not None:
+            return pname, f"{q} {n}", g.value(r, OWL.onClass) or g.value(r, OWL.onDataRange)
+    for pred, q in ((OWL.minCardinality, "min"), (OWL.maxCardinality, "max"),
+                    (OWL.cardinality, "exactly")):
+        n = g.value(r, pred)
+        if n is not None:
+            return pname, f"{q} {n}", None
+    v = g.value(r, OWL.hasValue)
+    if v is not None:
+        return pname, "value", v
+    return None
+
+
+def _named_fillers(g: Graph, filler) -> list:
+    """Named classes a restriction filler points at (expanding unions/intersections)."""
+    if isinstance(filler, URIRef):
+        return [filler]
+    if isinstance(filler, BNode):
+        out = []
+        for pred in (OWL.unionOf, OWL.intersectionOf):
+            for item in _members(g, filler, pred):
+                if isinstance(item, URIRef):
+                    out.append(item)
+        return out
+    return []
+
+
+def _union_or_self(g: Graph, node) -> list:
+    """A named class, or the named members of an owl:unionOf (for domains/ranges)."""
+    if isinstance(node, URIRef):
+        return [node]
+    if isinstance(node, BNode):
+        return [m for m in _members(g, node, OWL.unionOf) if isinstance(m, URIRef)]
+    return []
+
+
+def _is_datatype(g: Graph, node) -> bool:
+    return isinstance(node, URIRef) and (
+        str(node).startswith(str(XSD)) or str(node) == str(RDFS.Literal)
+        or (node, RDF.type, RDFS.Datatype) in g)
+
+
 def parse_ontology(path: str, fmt: str | None = None) -> UModel:
     g = _parse_graph(path, fmt)
 
     m = UModel()
     labels = _build_labels(g)
+    onts = [o for o in g.subjects(RDF.type, OWL.Ontology) if isinstance(o, URIRef)]
+    if onts:
+        m.ontology_iri = str(sorted(onts, key=str)[0])
 
     # --- 1. Named classes -------------------------------------------------
     class_uris: set[URIRef] = set()
@@ -134,6 +225,72 @@ def parse_ontology(path: str, fmt: str | None = None) -> UModel:
             register_class(sup)
             m.edges.append(Edge(src=str(sub), dst=str(sup), kind="generalization"))
 
+    # --- 2b. Class expressions: definitions and restrictions --------------
+    owl_thing = OWL.Thing
+
+    def add_expr(cls_uri: URIRef, expr, defining: bool) -> None:
+        """Turn one superclass / equivalent-class expression into edges."""
+        cid = str(cls_uri)
+        if isinstance(expr, URIRef):
+            if expr == owl_thing:
+                return
+            register_class(expr)
+            if defining:
+                m.edges.append(Edge(src=cid, dst=str(expr), kind="equivalent", label="≡"))
+            return
+        if not isinstance(expr, BNode):
+            return
+        parts = _members(g, expr, OWL.intersectionOf)
+        if parts:
+            for part in parts:
+                if isinstance(part, URIRef):
+                    if part == owl_thing:
+                        continue
+                    register_class(part)
+                    m.edges.append(Edge(
+                        src=cid, dst=str(part),
+                        kind="definition" if defining else "generalization"))
+                else:
+                    add_expr(cls_uri, part, defining=defining)
+            return
+        if (expr, RDF.type, OWL.Restriction) in g or g.value(expr, OWL.onProperty) is not None:
+            res = _restriction(g, expr, labels)
+            if res is None:
+                return
+            pname, q, filler = res
+            label = f"{pname} {q}"
+            targets = _named_fillers(g, filler) if filler is not None else []
+            if filler is not None and _is_datatype(g, filler):
+                m.classes[cid].attrs.append(Attr(name=label, type=_local(filler)))
+                return
+            for t in targets:
+                if t == owl_thing:
+                    continue
+                register_class(t)
+                m.edges.append(Edge(src=cid, dst=str(t), kind="restriction", label=label))
+            if not targets and isinstance(filler, (Literal, URIRef)) and q == "value":
+                m.classes[cid].attrs.append(Attr(name=label, type=_display(filler, labels)))
+            elif not targets and filler is None:
+                m.classes[cid].attrs.append(Attr(name=label))
+        # unionOf / complementOf as a superclass or definition: no faithful
+        # single edge exists, so it is left out of the diagram.
+
+    for sub, sup in g.subject_objects(RDFS.subClassOf):
+        if isinstance(sub, URIRef) and isinstance(sup, BNode):
+            register_class(sub)
+            add_expr(sub, sup, defining=False)
+
+    for a, b in g.subject_objects(OWL.equivalentClass):
+        for cls_uri, expr in ((a, b), (b, a)):
+            if isinstance(cls_uri, URIRef) and not (isinstance(expr, URIRef) and str(expr) < str(cls_uri)):
+                if isinstance(expr, BNode) and not _members(g, expr, OWL.intersectionOf) \
+                        and g.value(expr, OWL.onProperty) is None:
+                    continue
+                register_class(cls_uri)
+                if isinstance(expr, BNode):
+                    m.classes[str(cls_uri)].defined = True
+                add_expr(cls_uri, expr, defining=True)
+
     # --- 3. Properties ----------------------------------------------------
     prop_uris: set[URIRef] = set()
     for ptype in (OWL.ObjectProperty, OWL.DatatypeProperty,
@@ -144,8 +301,10 @@ def parse_ontology(path: str, fmt: str | None = None) -> UModel:
 
     for p in prop_uris:
         name = _display(p, labels)
-        domains = [d for d in g.objects(p, RDFS.domain) if isinstance(d, URIRef)]
-        ranges = [r for r in g.objects(p, RDFS.range) if isinstance(r, URIRef)]
+        # Domains/ranges may be unions of classes ("legal order or legal
+        # content"); expand them to their named members.
+        domains = [d for x in g.objects(p, RDFS.domain) for d in _union_or_self(g, x)]
+        ranges = [r for x in g.objects(p, RDFS.range) for r in _union_or_self(g, x)]
         is_object = (p, RDF.type, OWL.ObjectProperty) in g
         is_data = (p, RDF.type, OWL.DatatypeProperty) in g
 

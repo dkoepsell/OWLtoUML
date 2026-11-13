@@ -13,6 +13,7 @@ from html import escape as _h
 from pathlib import Path
 
 from .model import UModel, UClass
+from .postprocess import DEFAULT_COLOR, UPPER_COLOR, shade, tint
 
 _ROOT = Path(__file__).resolve().parents[2]
 _PREFIX = _ROOT / ".local"
@@ -80,27 +81,35 @@ _ICON_BG = "#84BE84"
 _ICON_BORDER = "#5B9A5B"
 
 
-def _icon() -> str:
-    """A small green rounded 'C' badge, mimicking PlantUML's class icon."""
+def _icon(color: str = _ICON_BG) -> str:
+    """A small rounded 'C' badge, mimicking PlantUML's class icon.
+
+    Coloured by the class's group (namespace / IRI prefix) when there is more
+    than one group, so the patterns or modules of an ontology read at a glance.
+    """
+    border = _ICON_BORDER if color.lower() == _ICON_BG.lower() else shade(color)
     return (
-        f'<table border="1" color="{_ICON_BORDER}" cellborder="0" '
-        f'cellspacing="0" cellpadding="0" bgcolor="{_ICON_BG}" style="rounded">'
+        f'<table border="1" color="{border}" cellborder="0" '
+        f'cellspacing="0" cellpadding="0" bgcolor="{color}" style="rounded">'
         '<tr><td width="15" height="15" align="center">'
         '<font color="white" point-size="10"><b>C</b></font>'
         '</td></tr></table>'
     )
 
 
-def _label(c: UClass) -> str:
+def _label(c: UClass, color: str = "") -> str:
     """HTML-like table label for one UML class box (PlantUML-style)."""
+    color = color or _ICON_BG
+    header_bg = _HEADER_BG if color.lower() == _ICON_BG.lower() else tint(color)
     title = ""
-    if c.stereotype:
-        title += f'<font point-size="9">&#171;{_h(c.stereotype)}&#187;</font><br/>'
+    stereo = c.stereotype or ("defined" if c.defined else "")
+    if stereo:
+        title += f'<font point-size="9">&#171;{_h(stereo)}&#187;</font><br/>'
     title += "<br/>".join(f"<b>{_h(line)}</b>" for line in _wrap(c.name))
     # Header: green class icon to the left of the (optionally stereotyped) name.
     header = (
         '<table border="0" cellborder="0" cellspacing="0" cellpadding="0"><tr>'
-        f'<td valign="middle">{_icon()}</td>'
+        f'<td valign="middle">{_icon(color)}</td>'
         '<td width="6"></td>'
         f'<td valign="middle">{title}</td>'
         '</tr></table>'
@@ -108,7 +117,7 @@ def _label(c: UClass) -> str:
     rows = [
         f'<table border="1" color="{_BORDER}" cellborder="0" cellspacing="0" '
         f'cellpadding="6" bgcolor="{_BODY_BG}">',
-        f'<tr><td bgcolor="{_HEADER_BG}" align="center">{header}</td></tr>',
+        f'<tr><td bgcolor="{header_bg}" align="center">{header}</td></tr>',
     ]
     if c.attrs:
         rows.append("<hr/>")
@@ -134,7 +143,30 @@ def _engine_for(m: UModel) -> str:
     return "sfdp" if len(m.classes) > _SFDP_LIMIT else "dot"
 
 
-def to_dot(m: UModel) -> str:
+def _slug(name: str) -> str:
+    return "".join(ch if ch.isalnum() else "-" for ch in name)
+
+
+def _legend(m: UModel) -> str:
+    """A key: one swatch per group, plus the line styles used."""
+    rows = ['<tr><td colspan="2" align="left"><b>Key</b></td></tr>']
+    for g in sorted(m.groups.values(), key=lambda g: (g.upper, g.name)):
+        note = " (imported)" if g.upper else ""
+        rows.append(
+            f'<tr><td bgcolor="{g.color}" width="14"> </td>'
+            f'<td align="left">{_h(g.name)}{note} · {g.count}</td></tr>')
+    rows.append('<tr><td align="left" colspan="2">'
+                '<font point-size="10">solid hollow arrow: subclass of<br/>'
+                'dashed hollow arrow: defined as a kind of (≡)<br/>'
+                'blue arrow: property domain → range<br/>'
+                'dashed blue arrow: restriction (some / only / min …)</font></td></tr>')
+    table = ('<table border="1" color="#a0a0a0" cellborder="0" cellspacing="2" '
+             'cellpadding="3" bgcolor="#ffffff">' + "".join(rows) + "</table>")
+    return (f'  legend [label=<{table}>, id="legend", class="uml-legend", '
+            f'tooltip="key"];')
+
+
+def to_dot(m: UModel, legend: bool = True, xlabels: bool = False) -> str:
     # Curved splines look best for small diagrams; straight lines scale.
     splines = "true" if len(m.classes) <= _SPLINE_LIMIT else "line"
     # sfdp ignores rankdir/ranksep; overlap removal keeps boxes from stacking.
@@ -149,13 +181,18 @@ def to_dot(m: UModel) -> str:
         '  edge [fontname="Helvetica,Arial,sans-serif", fontsize=10];',
     ]
     ids: dict[str, str] = {}
+    groups = m.groups
     for i, (cid, c) in enumerate(m.classes.items()):
         nid = f"n{i}"
         ids[cid] = nid
+        g = groups.get(c.group)
+        color = g.color if g else ""
+        gcls = f" grp-{_slug(c.group)}" if c.group else ""
+        defcls = " defined" if c.defined else ""
         # id/class are copied onto the SVG <g>, giving the browser-side
         # interaction script (webapp/static/interact.js) stable hooks.
-        lines.append(f'  {nid} [label=<{_label(c)}>, tooltip="{_attr(cid)}", '
-                     f'id="{nid}", class="uml-class"];')
+        lines.append(f'  {nid} [label=<{_label(c, color)}>, tooltip="{_attr(cid)}", '
+                     f'id="{nid}", class="uml-class{gcls}{defcls}"];')
 
     for i, e in enumerate(m.edges):
         if e.src not in ids or e.dst not in ids:
@@ -166,14 +203,34 @@ def to_dot(m: UModel) -> str:
                 f'  {s} -> {d} [arrowhead=empty, color="#33312e", penwidth=1.2, '
                 f'id="e{i}", class="rel-generalization", tooltip="subclass of"];'
             )
+        elif e.kind == "definition":
+            # Dashed hollow triangle: the class is *defined* as a kind of the
+            # target (a named member of its owl:equivalentClass intersection).
+            lines.append(
+                f'  {s} -> {d} [arrowhead=empty, style=dashed, color="#33312e", '
+                f'penwidth=1.2, id="e{i}", class="rel-definition", '
+                f'tooltip="defined as a kind of (equivalent class)"];'
+            )
+        elif e.kind == "equivalent":
+            lines.append(
+                f'  {s} -> {d} [dir=both, arrowhead=none, arrowtail=none, '
+                f'style=dashed, color="#33312e", label="≡", constraint=false, '
+                f'id="e{i}", class="rel-equivalent", tooltip="equivalent class"];'
+            )
         else:
-            lbl = f', label="{_attr(e.label)}"' if e.label else ""
-            tip = _attr(e.label or e.kind)
+            restriction = e.kind == "restriction"
+            # Merged relations: one per line (DOT "\n" escape, not a raw newline).
+            key = "xlabel" if xlabels else "label"
+            lbl = f', {key}="{_attr(e.label).replace(chr(10), chr(92) + "n")}"' if e.label else ""
+            tip = _attr((e.label or e.kind).replace(chr(10), "; "))
+            style = ", style=dashed" if restriction else ""
             lines.append(
                 f'  {s} -> {d} [arrowhead=vee, color="#3a5a8c", '
-                f"fontcolor=\"#3a5a8c\", constraint=false{lbl}, "
+                f"fontcolor=\"#3a5a8c\", constraint=false{style}{lbl}, "
                 f'id="e{i}", class="rel-{_attr(e.kind)}", tooltip="{tip}"];'
             )
+    if legend and len(groups) > 1:
+        lines.append(_legend(m))
     lines.append("}")
     return "\n".join(lines)
 
@@ -187,11 +244,24 @@ def _run_engine(dot: str, engine: str, src: bytes, env: dict | None,
     )
 
 
-def render_dot_svg(m: UModel) -> str:
+# Above this many classes, relation labels become Graphviz "xlabels": placed
+# after layout instead of reserving space in it. Edge labels otherwise widen
+# a large diagram by about a third (98-class LOF ontology: 7,667pt -> 5,410pt).
+_XLABEL_MIN = 40
+
+
+def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto") -> str:
+    """Render with Graphviz.
+
+    ``compact_labels``: "auto" (diagrams of 40+ classes), "on", "off". When on,
+    relation labels do not take up layout space (see _XLABEL_MIN).
+    """
     dot, env = _gv()
     if not dot:
         raise RuntimeError("graphviz 'dot' not found (run scripts/setup.sh)")
-    src = to_dot(m).encode("utf-8")
+    compact = compact_labels == "on" or (
+        compact_labels == "auto" and len(m.classes) >= _XLABEL_MIN)
+    src = to_dot(m, legend=legend, xlabels=compact).encode("utf-8")
     engine = _engine_for(m)
 
     try:

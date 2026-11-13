@@ -53,6 +53,11 @@
             <option value="trig">trig</option>
           </select>
         </div>
+        <div class="fmtrow">
+          <label title="By default, imported upper-level classes (e.g. BFO) that the ontology never uses are left out">
+            <input type="checkbox" id="keepUnused" /> keep unused imported classes
+          </label>
+        </div>
       </div>
     </section>
 
@@ -66,7 +71,7 @@
 
   <footer id="status">
     <span id="statusText">Ready.</span>
-    <span class="hint" id="hint" hidden>hover: neighbours · click: pin · click again: widen · drag: move · Fill screen: spread out · click a line: jump · Esc: clear</span>
+    <span class="hint" id="hint" hidden>dashed hollow arrow: defined class · dashed blue: restriction · hover: neighbours · click: pin · click again: widen · drag: move · Fill screen: spread out · click a line: jump · Esc: clear</span>
     <a href="/about" class="about-link">About the algorithms</a>
   </footer>
 </body>

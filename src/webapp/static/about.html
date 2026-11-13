@@ -86,6 +86,51 @@
         Springer.</li>
     </ul>
 
+    <h3>Defined classes and restrictions</h3>
+    <p>
+      Much of what an OWL ontology says is carried by anonymous class
+      expressions, not by named superclasses. A <em>defined</em> class is
+      <code>owl:equivalentClass</code> to an intersection (necessary and
+      sufficient conditions); a <em>restriction</em> under
+      <code>rdfs:subClassOf</code> states a necessary condition. Reading only
+      named superclasses would leave defined classes with no edges at all. The
+      diagram therefore draws:
+    </p>
+    <ul>
+      <li>each named member of a defining intersection as a <strong>dashed
+        generalization</strong> (the class is defined as a kind of it), and
+        marks the class &#171;defined&#187;;</li>
+      <li>each <code>someValuesFrom</code>, <code>allValuesFrom</code>,
+        cardinality or <code>hasValue</code> restriction with a named filler as
+        a <strong>dashed association</strong> labelled with the property and
+        quantifier (<em>p some</em>, <em>p only</em>, <em>p min 1</em>);
+        unions in fillers, domains and ranges are expanded to their members,
+        and datatype restrictions become attributes;</li>
+      <li><code>owl:equivalentClass</code> between two named classes as a
+        dashed line marked &#8801;.</li>
+    </ul>
+    <p>
+      This follows the ODM mapping of OWL class expressions onto UML
+      constraints, simplified to what a class diagram can show: unions and
+      complements used as superclasses have no faithful single edge and are
+      left out.
+    </p>
+
+    <h3>Groups, imported vocabulary, and parallel relations</h3>
+    <p>
+      Classes are grouped by OBO-style IRI prefix (<code>BFO_</code>,
+      <code>ODP003_</code>) or else by namespace, and each group gets a colour
+      and an entry in the key. A group none of whose classes lives under the
+      ontology's own namespace is treated as imported (for instance BFO), drawn
+      in grey, and pruned to what the ontology uses: its own classes, the
+      classes they reach through relations, and their ancestors. Relations
+      among imported classes alone are omitted. Several relations between the
+      same two classes are drawn as one line with stacked labels, and a
+      restriction makes the plain domain/range association it repeats
+      redundant. Above 40 classes, relation labels are placed after layout
+      (Graphviz <code>xlabel</code>) so they do not widen the drawing.
+    </p>
+
     <h2>2. Layered layout (layer assignment &amp; Graphviz <code>dot</code>)</h2>
     <p>
       Each class's rank is computed as <code>1 + max(parent depths)</code> over

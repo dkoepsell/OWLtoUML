@@ -5,6 +5,7 @@ from html import escape
 
 from .model import UModel, UClass
 from .layout import TITLE_H, ROW_H
+from .postprocess import DEFAULT_COLOR, shade, tint
 
 FONT = "Helvetica, Arial, sans-serif"
 
@@ -27,8 +28,11 @@ def _border_point(c: UClass, tx: float, ty: float) -> tuple[float, float]:
     return cx + dx * s, cy + dy * s
 
 
-def _class_svg(c: UClass) -> str:
-    header_h = TITLE_H + (ROW_H if c.stereotype else 0)
+def _class_svg(c: UClass, color: str = DEFAULT_COLOR) -> str:
+    stereo = c.stereotype or ("defined" if c.defined else "")
+    header_h = TITLE_H + (ROW_H if stereo else 0)
+    header_bg = "#eef6ee" if color.lower() == DEFAULT_COLOR else tint(color)
+    icon_border = "#5b9a5b" if color.lower() == DEFAULT_COLOR else shade(color)
     parts = [
         '<g>',
         # white body
@@ -36,17 +40,17 @@ def _class_svg(c: UClass) -> str:
         f'rx="3" fill="#ffffff" stroke="none"/>',
         # pale green header band
         f'<rect x="{c.x:.1f}" y="{c.y:.1f}" width="{c.w:.1f}" height="{header_h:.1f}" '
-        f'fill="#eef6ee" stroke="none"/>',
+        f'fill="{header_bg}" stroke="none"/>',
         # rounded outline drawn on top so header corners stay clean
         f'<rect x="{c.x:.1f}" y="{c.y:.1f}" width="{c.w:.1f}" height="{c.h:.1f}" '
         f'rx="3" fill="none" stroke="#a0a0a0" stroke-width="1.2"/>',
     ]
     ty = c.y
-    if c.stereotype:
+    if stereo:
         parts.append(
             f'<text x="{c.x + c.w/2:.1f}" y="{ty + 14:.1f}" font-size="10" '
             f'font-style="italic" font-family="{FONT}" fill="#555" '
-            f'text-anchor="middle">&#171;{escape(c.stereotype)}&#187;</text>'
+            f'text-anchor="middle">&#171;{escape(stereo)}&#187;</text>'
         )
         ty += ROW_H
     # green "C" class icon at the left of the name, mimicking PlantUML
@@ -54,7 +58,7 @@ def _class_svg(c: UClass) -> str:
     icon_cy = ty + 11
     parts.append(
         f'<circle cx="{icon_cx:.1f}" cy="{icon_cy:.1f}" r="7.5" '
-        f'fill="#84be84" stroke="#5b9a5b" stroke-width="1"/>'
+        f'fill="{color}" stroke="{icon_border}" stroke-width="1"/>'
     )
     parts.append(
         f'<text x="{icon_cx:.1f}" y="{icon_cy + 3.5:.1f}" font-size="9.5" '
@@ -93,20 +97,24 @@ def _edge_svg(m: UModel, e) -> str:
     x1, y1 = _border_point(src, dcx, dcy)
     x2, y2 = _border_point(dst, scx, scy)
 
-    if e.kind == "generalization":
+    if e.kind in ("generalization", "definition", "equivalent"):
+        dash = ' stroke-dasharray="6 4"' if e.kind != "generalization" else ""
+        marker = "" if e.kind == "equivalent" else ' marker-end="url(#tri)"'
         line = (
             f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
-            f'stroke="#33312e" stroke-width="1.2" marker-end="url(#tri)"/>'
+            f'stroke="#33312e" stroke-width="1.2"{dash}{marker}/>'
         )
         return line
-    # association
+    # association / restriction
+    dash = ' stroke-dasharray="6 4"' if e.kind == "restriction" else ""
     line = (
         f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
-        f'stroke="#3a5a8c" stroke-width="1.2" marker-end="url(#arrow)"/>'
+        f'stroke="#3a5a8c" stroke-width="1.2"{dash} marker-end="url(#arrow)"/>'
     )
     if e.label:
+        e_label = e.label.replace("\n", " / ")
         mx, my = (x1 + x2) / 2, (y1 + y2) / 2
-        w = len(e.label) * 6.2 + 6
+        w = len(e_label) * 6.2 + 6
         bg = (
             f'<rect x="{mx - w/2:.1f}" y="{my - 9:.1f}" width="{w:.1f}" '
             f'height="14" fill="#ffffff" opacity="0.85"/>'
@@ -114,7 +122,7 @@ def _edge_svg(m: UModel, e) -> str:
         txt = (
             f'<text x="{mx:.1f}" y="{my + 2:.1f}" font-size="10.5" '
             f'font-family="{FONT}" fill="#3a5a8c" text-anchor="middle">'
-            f'{escape(e.label)}</text>'
+            f'{escape(e_label)}</text>'
         )
         return line + "\n" + bg + "\n" + txt
     return line
@@ -140,7 +148,8 @@ def render_svg(m: UModel, width: float, height: float) -> str:
         if s:
             body.append(s)
     for c in m.classes.values():
-        body.append(_class_svg(c))
+        g = m.groups.get(c.group)
+        body.append(_class_svg(c, g.color if g and g.color else DEFAULT_COLOR))
 
     return (
         f'<?xml version="1.0" encoding="UTF-8"?>\n'

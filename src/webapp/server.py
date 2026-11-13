@@ -15,6 +15,7 @@ from flask import Flask, request, jsonify, send_from_directory
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from owl2uml.parse import parse_ontology          # noqa: E402
+from owl2uml.postprocess import postprocess       # noqa: E402
 from owl2uml.dot import dot_available, render_dot_svg  # noqa: E402
 from owl2uml.layout import layout                  # noqa: E402
 from owl2uml.render import render_svg              # noqa: E402
@@ -66,6 +67,9 @@ def render():
             tmp_path = tmp.name
 
         model = parse_ontology(tmp_path, fmt=fmt)
+        # "keep_unused=1" keeps imported upper-level classes the ontology
+        # never reaches (left out by default).
+        report = postprocess(model, prune=request.form.get("keep_unused") not in ("1", "true", "on"))
     except Exception as exc:  # noqa: BLE001
         return jsonify(error=f"parse failed: {exc}"), 400
     finally:
@@ -88,6 +92,11 @@ def render():
         engine=engine,
         classes=len(model.classes),
         edges=len(model.edges),
+        pruned=report["pruned"],
+        groups=[
+            {"name": g.name, "color": g.color, "count": g.count, "upper": g.upper}
+            for g in sorted(model.groups.values(), key=lambda g: (g.upper, g.name))
+        ],
     )
 
 

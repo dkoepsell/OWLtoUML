@@ -35,6 +35,7 @@ async function renderFile(file) {
   const fd = new FormData();
   fd.append("file", file);
   fd.append("format", $("format").value);
+  if ($("keepUnused").checked) fd.append("keep_unused", "1");
 
   let res, data;
   try {
@@ -54,8 +55,10 @@ async function renderFile(file) {
   lastSvgText = data.svg;
   lastName = file.name.replace(/\.[^.]+$/, "") || "diagram";
   mountSvg(data.svg);
+  const pruned = data.pruned ? ` · ${data.pruned} unused imported classes left out` : "";
+  const groups = data.groups && data.groups.length > 1 ? ` · ${data.groups.length} groups` : "";
   setStatus(
-    `${file.name} — ${data.classes} classes, ${data.edges} relations · engine: ${data.engine}`
+    `${file.name} — ${data.classes} classes, ${data.edges} relations${groups}${pruned} · engine: ${data.engine}`
   );
 }
 
@@ -109,7 +112,7 @@ function runSearch(q) {
   q = q.trim().toLowerCase();
   if (!svgEl || !q) return;
 
-  svgEl.querySelectorAll("g.node").forEach((g) => {
+  svgEl.querySelectorAll("g.node:not(.uml-legend)").forEach((g) => {
     if ((g.textContent || "").toLowerCase().includes(q)) {
       g.classList.add("node--hit");
       matches.push(g);

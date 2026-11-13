@@ -1,0 +1,45 @@
+@prefix :    <http://example.org/kitchen/> .
+@prefix ext: <http://purl.obolibrary.org/obo/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:<http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Small fixture for defined classes, restrictions, groups and pruning.
+<http://example.org/kitchen/kitchen.owl> a owl:Ontology .
+
+ext:UP_0000001 a owl:Class ; rdfs:label "entity" .
+ext:UP_0000002 a owl:Class ; rdfs:label "object" ; rdfs:subClassOf ext:UP_0000001 .
+ext:UP_0000003 a owl:Class ; rdfs:label "quality" ; rdfs:subClassOf ext:UP_0000001 .
+ext:UP_0000004 a owl:Class ; rdfs:label "unused fiat thing" ; rdfs:subClassOf ext:UP_0000001 .
+
+:Dish     a owl:Class ; rdfs:subClassOf ext:UP_0000002 .
+:Topping  a owl:Class ; rdfs:subClassOf ext:UP_0000002 .
+:Cheese   a owl:Class ; rdfs:subClassOf :Topping .
+:Meat     a owl:Class ; rdfs:subClassOf :Topping .
+:Base     a owl:Class ; rdfs:subClassOf ext:UP_0000002 .
+
+:hasTopping a owl:ObjectProperty ; rdfs:domain :Dish ; rdfs:range :Topping .
+:hasBase    a owl:ObjectProperty ; rdfs:domain :Dish ; rdfs:range :Base .
+:hasLabel   a owl:DatatypeProperty .
+:servedTo   a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( :Dish :Topping ) ] ; rdfs:range ext:UP_0000002 .
+
+# Necessary condition: every dish has some base (duplicates the domain/range
+# association, which should then be dropped in favour of the restriction).
+:Dish rdfs:subClassOf [ a owl:Restriction ; owl:onProperty :hasBase ; owl:someValuesFrom :Base ] .
+
+# Defined class: a cheesy dish is a dish that has some cheese topping.
+:CheesyDish a owl:Class ;
+    owl:equivalentClass [ owl:intersectionOf ( :Dish
+        [ a owl:Restriction ; owl:onProperty :hasTopping ; owl:someValuesFrom :Cheese ] ) ] .
+
+# Defined class with a union filler and a datatype restriction.
+:LabelledDish a owl:Class ;
+    owl:equivalentClass [ owl:intersectionOf ( :Dish
+        [ a owl:Restriction ; owl:onProperty :hasLabel ; owl:someValuesFrom xsd:string ] ) ] .
+:MixedDish a owl:Class ;
+    owl:equivalentClass [ owl:intersectionOf ( :Dish
+        [ a owl:Restriction ; owl:onProperty :hasTopping ;
+          owl:someValuesFrom [ owl:unionOf ( :Cheese :Meat ) ] ] ) ] .
+:Snack a owl:Class ; owl:equivalentClass :Nibble .
+:Nibble a owl:Class .

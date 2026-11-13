@@ -1,7 +1,7 @@
 """Compute box sizes and positions for the UML model (layered layout)."""
 from __future__ import annotations
 
-from .model import UModel, UClass
+from .model import HIERARCHY_KINDS, UModel, UClass
 
 # Geometry constants (pixels).
 CHAR_W = 7.2          # approx width of a 12px char
@@ -16,19 +16,19 @@ MARGIN = 40
 
 
 def _measure(c: UClass) -> None:
-    longest = len(c.name) + (len(c.stereotype) + 4 if c.stereotype else 0)
+    longest = max(len(c.name), len(c.stereotype or ("defined" if c.defined else "")) + 4)
     for a in c.attrs:
         longest = max(longest, len(a.label()))
     c.w = max(MIN_W, longest * CHAR_W + 2 * PAD_X)
     body = (ROW_H * len(c.attrs) + 8) if c.attrs else 0
-    extra = ROW_H if c.stereotype else 0
+    extra = ROW_H if (c.stereotype or c.defined) else 0
     c.h = TITLE_H + extra + body
 
 
 def _assign_layers(m: UModel) -> None:
     parents: dict[str, list[str]] = {cid: [] for cid in m.classes}
     for e in m.edges:
-        if e.kind == "generalization" and e.src in m.classes and e.dst in m.classes:
+        if e.kind in HIERARCHY_KINDS and e.src in m.classes and e.dst in m.classes:
             parents[e.src].append(e.dst)
 
     memo: dict[str, int] = {}

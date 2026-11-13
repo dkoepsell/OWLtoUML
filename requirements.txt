@@ -1,3 +1,7 @@
 rdflib>=7.0
 flask>=3.0
 gunicorn>=21.0
+# Reasoning (optional at run time): owlrl is pure Python (OWL 2 RL);
+# owlready2 bundles HermiT (OWL 2 DL) but needs a Java runtime on PATH.
+owlrl>=7.0
+owlready2>=0.46

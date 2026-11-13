@@ -29,7 +29,10 @@ def _border_point(c: UClass, tx: float, ty: float) -> tuple[float, float]:
 
 
 def _class_svg(c: UClass, color: str = DEFAULT_COLOR) -> str:
-    stereo = c.stereotype or ("defined" if c.defined else "")
+    stereo = c.stereotype or ("unsatisfiable" if c.unsatisfiable else
+                              "defined" if c.defined else "")
+    if c.unsatisfiable:
+        color = "#c0392b"
     header_h = TITLE_H + (ROW_H if stereo else 0)
     header_bg = "#eef6ee" if color.lower() == DEFAULT_COLOR else tint(color)
     icon_border = "#5b9a5b" if color.lower() == DEFAULT_COLOR else shade(color)
@@ -97,6 +100,11 @@ def _edge_svg(m: UModel, e) -> str:
     x1, y1 = _border_point(src, dcx, dcy)
     x2, y2 = _border_point(dst, scx, scy)
 
+    if e.kind == "inferred":
+        return (
+            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
+            f'stroke="#d9822b" stroke-width="2" marker-end="url(#tri)"/>'
+        )
     if e.kind in ("generalization", "definition", "equivalent"):
         dash = ' stroke-dasharray="6 4"' if e.kind != "generalization" else ""
         marker = "" if e.kind == "equivalent" else ' marker-end="url(#tri)"'

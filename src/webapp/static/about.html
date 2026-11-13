@@ -131,6 +131,37 @@
       (Graphviz <code>xlabel</code>) so they do not widen the drawing.
     </p>
 
+    <h3>Reasoning: asserted and inferred</h3>
+    <p>
+      With <em>run reasoner</em> checked (CLI: <code>--reason</code>), the
+      ontology is classified and the result drawn on the same layout. A
+      subclass relation the reasoner finds, and that the asserted subclass and
+      definition edges do not already imply, is drawn as an
+      <strong>orange arrow</strong>, and the class it moved is outlined in
+      orange; <em>Show/Hide inferred</em> (or the <kbd>i</kbd> key, also in
+      downloaded SVGs) switches between the asserted and the classified view.
+      Only <em>direct</em> inferred superclasses are drawn (a transitive
+      reduction), so classification adds as few lines as possible.
+      Unsatisfiable classes are drawn in red; an inconsistent ontology is
+      reported and not classified.
+    </p>
+    <ul>
+      <li><strong>HermiT</strong> (via owlready2) performs full OWL 2 DL
+        classification, including placing one defined class under another.
+        It needs a Java runtime and is used when one is available.</li>
+      <li><strong>owlrl</strong> computes the OWL 2 RL closure in pure Python.
+        It finds subsumptions that follow by rule (named equivalences,
+        intersections, property hierarchies) but not those that need DL
+        reasoning, and does not detect unsatisfiable classes.</li>
+    </ul>
+    <ul>
+      <li><strong>Glimm, B., Horrocks, I., Motik, B., Stoilos, G., &amp; Wang, Z.
+        (2014).</strong> HermiT: An OWL 2 reasoner. <em>Journal of Automated
+        Reasoning</em>, 53(3), 245&ndash;269.</li>
+      <li><strong>W3C (2012).</strong> <em>OWL 2 Web Ontology Language Profiles
+        (Second Edition)</em>, section 4: OWL 2 RL.</li>
+    </ul>
+
     <h2>2. Layered layout (layer assignment &amp; Graphviz <code>dot</code>)</h2>
     <p>
       Each class's rank is computed as <code>1 + max(parent depths)</code> over

@@ -22,6 +22,7 @@
       <button id="spread" title="Spread classes out to fill the window, keeping their arrangement">Fill screen</button>
       <button id="zoomIn" title="Zoom in">&plus;</button>
       <span class="sep"></span>
+      <button id="inferred" title="Show or hide what the reasoner inferred (i)" hidden>Show inferred</button>
       <button id="clearFocus" title="Clear highlighted classes (Esc)">Clear focus</button>
       <button id="resetLayout" title="Put dragged classes back">Reset layout</button>
       <span class="sep"></span>
@@ -58,6 +59,11 @@
             <input type="checkbox" id="keepUnused" /> keep unused imported classes
           </label>
         </div>
+        <div class="fmtrow">
+          <label title="Classify the ontology with a reasoner and show what it infers, in orange">
+            <input type="checkbox" id="reason" /> run reasoner
+          </label>
+        </div>
       </div>
     </section>
 
@@ -71,7 +77,7 @@
 
   <footer id="status">
     <span id="statusText">Ready.</span>
-    <span class="hint" id="hint" hidden>dashed hollow arrow: defined class · dashed blue: restriction · hover: neighbours · click: pin · click again: widen · drag: move · Fill screen: spread out · click a line: jump · Esc: clear</span>
+    <span class="hint" id="hint" hidden>dashed hollow arrow: defined class · dashed blue: restriction · hover: neighbours · click: pin · click again: widen · drag: move · Fill screen: spread out · click a line: jump · i: inferred · Esc: clear</span>
     <a href="/about" class="about-link">About the algorithms</a>
   </footer>
 </body>

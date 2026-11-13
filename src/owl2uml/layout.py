@@ -16,12 +16,13 @@ MARGIN = 40
 
 
 def _measure(c: UClass) -> None:
-    longest = max(len(c.name), len(c.stereotype or ("defined" if c.defined else "")) + 4)
+    longest = max(len(c.name), len(c.stereotype or ("unsatisfiable" if c.unsatisfiable
+                                                    else "defined" if c.defined else "")) + 4)
     for a in c.attrs:
         longest = max(longest, len(a.label()))
     c.w = max(MIN_W, longest * CHAR_W + 2 * PAD_X)
     body = (ROW_H * len(c.attrs) + 8) if c.attrs else 0
-    extra = ROW_H if (c.stereotype or c.defined) else 0
+    extra = ROW_H if (c.stereotype or c.defined or c.unsatisfiable) else 0
     c.h = TITLE_H + extra + body
 
 

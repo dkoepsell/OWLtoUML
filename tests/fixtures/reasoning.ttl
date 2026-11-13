@@ -1,0 +1,26 @@
+@prefix :    <http://example.org/kitchen/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:<http://www.w3.org/2000/01/rdf-schema#> .
+
+# Fixture for reasoning: one DL classification, one rule-level inference,
+# one unsatisfiable class.
+<http://example.org/kitchen/reasoning.owl> a owl:Ontology .
+
+:Dish a owl:Class .
+:Topping a owl:Class .
+:Cheese a owl:Class ; rdfs:subClassOf :Topping ; owl:disjointWith :Meat .
+:Meat a owl:Class ; rdfs:subClassOf :Topping .
+:hasTopping a owl:ObjectProperty .
+
+# DL classification (HermiT): a cheesy dish is a topped dish, though nobody says so.
+:ToppedDish a owl:Class ; owl:equivalentClass [ owl:intersectionOf ( :Dish
+    [ a owl:Restriction ; owl:onProperty :hasTopping ; owl:someValuesFrom :Topping ] ) ] .
+:CheesyDish a owl:Class ; owl:equivalentClass [ owl:intersectionOf ( :Dish
+    [ a owl:Restriction ; owl:onProperty :hasTopping ; owl:someValuesFrom :Cheese ] ) ] .
+
+# Rule-level (OWL RL and DL): a snack is a nibble, a nibble is a dish.
+:Snack a owl:Class ; owl:equivalentClass :Nibble .
+:Nibble a owl:Class ; rdfs:subClassOf :Dish .
+
+# Unsatisfiable (DL): both cheese and meat, which are disjoint.
+:Cheeseburger a owl:Class ; rdfs:subClassOf :Cheese , :Meat .

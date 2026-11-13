@@ -102,7 +102,10 @@ def _label(c: UClass, color: str = "") -> str:
     color = color or _ICON_BG
     header_bg = _HEADER_BG if color.lower() == _ICON_BG.lower() else tint(color)
     title = ""
-    stereo = c.stereotype or ("defined" if c.defined else "")
+    stereo = c.stereotype or ("unsatisfiable" if c.unsatisfiable else
+                              "defined" if c.defined else "")
+    if c.unsatisfiable:
+        color, header_bg = "#c0392b", "#f6d5d1"
     if stereo:
         title += f'<font point-size="9">&#171;{_h(stereo)}&#187;</font><br/>'
     title += "<br/>".join(f"<b>{_h(line)}</b>" for line in _wrap(c.name))
@@ -143,6 +146,19 @@ def _engine_for(m: UModel) -> str:
     return "sfdp" if len(m.classes) > _SFDP_LIMIT else "dot"
 
 
+INFERRED_COLOR = "#d9822b"
+
+# Embedded in every Graphviz SVG so the effect also works in downloaded files:
+# classes the reasoner moved get an orange outline while inferred edges show;
+# `svg.hide-inferred` (toggled by the web UI, or "i" in a standalone file)
+# hides inferred edges and those outlines together.
+SVG_STYLE = f"""<style class="o2u-style">
+g.node.inferred-placed polygon[stroke="#a0a0a0"] {{ stroke: {INFERRED_COLOR}; stroke-width: 2.5px; }}
+svg.hide-inferred g.edge.rel-inferred {{ display: none; }}
+svg.hide-inferred g.node.inferred-placed polygon[stroke="#a0a0a0"] {{ stroke: #a0a0a0; stroke-width: 1px; }}
+</style>"""
+
+
 def _slug(name: str) -> str:
     return "".join(ch if ch.isalnum() else "-" for ch in name)
 
@@ -155,11 +171,20 @@ def _legend(m: UModel) -> str:
         rows.append(
             f'<tr><td bgcolor="{g.color}" width="14"> </td>'
             f'<td align="left">{_h(g.name)}{note} · {g.count}</td></tr>')
+    inferred = any(e.kind == "inferred" for e in m.edges)
+    unsat = any(c.unsatisfiable for c in m.classes.values())
+    extra = ""
+    if inferred:
+        extra += (f'<br/><font color="{INFERRED_COLOR}">orange arrow: subclass of, '
+                  'inferred by the reasoner</font>')
+    if unsat:
+        extra += '<br/><font color="#c0392b">red class: unsatisfiable</font>'
     rows.append('<tr><td align="left" colspan="2">'
                 '<font point-size="10">solid hollow arrow: subclass of<br/>'
                 'dashed hollow arrow: defined as a kind of (≡)<br/>'
                 'blue arrow: property domain → range<br/>'
-                'dashed blue arrow: restriction (some / only / min …)</font></td></tr>')
+                'dashed blue arrow: restriction (some / only / min …)'
+                + extra + '</font></td></tr>')
     table = ('<table border="1" color="#a0a0a0" cellborder="0" cellspacing="2" '
              'cellpadding="3" bgcolor="#ffffff">' + "".join(rows) + "</table>")
     return (f'  legend [label=<{table}>, id="legend", class="uml-legend", '
@@ -188,7 +213,9 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False) -> str:
         g = groups.get(c.group)
         color = g.color if g else ""
         gcls = f" grp-{_slug(c.group)}" if c.group else ""
-        defcls = " defined" if c.defined else ""
+        defcls = (" defined" if c.defined else "") + \
+                 (" inferred-placed" if c.inferred_placed else "") + \
+                 (" unsatisfiable" if c.unsatisfiable else "")
         # id/class are copied onto the SVG <g>, giving the browser-side
         # interaction script (webapp/static/interact.js) stable hooks.
         lines.append(f'  {nid} [label=<{_label(c, color)}>, tooltip="{_attr(cid)}", '
@@ -211,6 +238,14 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False) -> str:
                 f'penwidth=1.2, id="e{i}", class="rel-definition", '
                 f'tooltip="defined as a kind of (equivalent class)"];'
             )
+        elif e.kind == "inferred":
+            # Found by the reasoner, not asserted: orange, so the classified
+            # view can be compared with the asserted one on the same layout.
+            lines.append(
+                f'  {s} -> {d} [arrowhead=empty, color="{INFERRED_COLOR}", '
+                f'penwidth=2, id="e{i}", class="rel-inferred", '
+                f'tooltip="subclass of (inferred by the reasoner)"];'
+            )
         elif e.kind == "equivalent":
             lines.append(
                 f'  {s} -> {d} [dir=both, arrowhead=none, arrowtail=none, '
@@ -229,7 +264,9 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False) -> str:
                 f"fontcolor=\"#3a5a8c\", constraint=false{style}{lbl}, "
                 f'id="e{i}", class="rel-{_attr(e.kind)}", tooltip="{tip}"];'
             )
-    if legend and len(groups) > 1:
+    special = any(e.kind == "inferred" for e in m.edges) or \
+        any(c.unsatisfiable for c in m.classes.values())
+    if legend and (len(groups) > 1 or special):
         lines.append(_legend(m))
     lines.append("}")
     return "\n".join(lines)
@@ -276,5 +313,7 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto")
     # "trouble in init_rank") and exit non-zero while still producing a valid
     # SVG. Accept the output whenever it actually contains an <svg> element.
     if "<svg" in out:
-        return out
+        # Insert the inferred-view stylesheet just inside the root element.
+        i = out.find(">", out.find("<svg")) + 1
+        return out[:i] + "\n" + SVG_STYLE + out[i:]
     raise RuntimeError(proc.stderr.decode("utf-8", "replace") or "dot produced no SVG")

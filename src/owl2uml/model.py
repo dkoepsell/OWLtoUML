@@ -23,10 +23,13 @@ class Attr:
 #   "restriction"     an existential/universal/cardinality restriction on the
 #                     class (in rdfs:subClassOf or owl:equivalentClass)
 #   "equivalent"      owl:equivalentClass between two named classes
-EDGE_KINDS = ("generalization", "definition", "association", "restriction", "equivalent")
+#   "inferred"        a subclass relation found by a reasoner and not already
+#                     implied by the asserted hierarchy (see reason.py)
+EDGE_KINDS = ("generalization", "definition", "association", "restriction",
+              "equivalent", "inferred")
 
 # Kinds that place a class below another in the class hierarchy.
-HIERARCHY_KINDS = ("generalization", "definition")
+HIERARCHY_KINDS = ("generalization", "definition", "inferred")
 
 
 @dataclass
@@ -47,6 +50,8 @@ class UClass:
     stereotype: str = ""
     group: str = ""        # namespace / IRI-prefix group, for colouring
     defined: bool = False  # has an owl:equivalentClass definition
+    unsatisfiable: bool = False   # reasoner: equivalent to owl:Nothing
+    inferred_placed: bool = False # reasoner: gained a superclass nobody asserted
 
     # filled in by the layout pass
     x: float = 0.0

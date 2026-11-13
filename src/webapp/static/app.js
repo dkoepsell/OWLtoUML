@@ -36,6 +36,7 @@ async function renderFile(file) {
   fd.append("file", file);
   fd.append("format", $("format").value);
   if ($("keepUnused").checked) fd.append("keep_unused", "1");
+  if ($("reason").checked) fd.append("reason", "auto");
 
   let res, data;
   try {
@@ -56,9 +57,11 @@ async function renderFile(file) {
   lastName = file.name.replace(/\.[^.]+$/, "") || "diagram";
   mountSvg(data.svg);
   const pruned = data.pruned ? ` · ${data.pruned} unused imported classes left out` : "";
+  setupInferred(data.reasoning);
   const groups = data.groups && data.groups.length > 1 ? ` · ${data.groups.length} groups` : "";
   setStatus(
-    `${file.name} — ${data.classes} classes, ${data.edges} relations${groups}${pruned} · engine: ${data.engine}`
+    `${file.name} — ${data.classes} classes, ${data.edges} relations${groups}${pruned} · engine: ${data.engine}` +
+    reasoningNote(data.reasoning), !!(data.reasoning && (data.reasoning.error || data.reasoning.inconsistent))
   );
 }
 
@@ -96,6 +99,34 @@ function mountSvg(svgText) {
   matches = [];
   matchIdx = -1;
   $("search").value = "";
+}
+
+// ---- reasoning ---------------------------------------------------------------
+// The server draws inferred subclass edges (class "rel-inferred") into the same
+// layout; the toolbar button (or "i") hides them and their orange outlines by
+// toggling the "hide-inferred" class on the <svg>.
+let inferredCount = 0;
+
+function reasoningNote(r) {
+  if (!r || r.engine === "none") return "";
+  if (r.error) return ` · reasoner (${r.engine}) failed: ${r.error}`;
+  if (r.inconsistent) return ` · reasoner (${r.engine}): ontology is INCONSISTENT`;
+  const unsat = r.unsatisfiable ? `, ${r.unsatisfiable} unsatisfiable` : "";
+  return ` · reasoner ${r.engine}: ${r.inferred} inferred subclass relation(s)${unsat} (${r.seconds}s)`;
+}
+
+function setupInferred(r) {
+  inferredCount = (r && !r.error && !r.inconsistent) ? r.inferred : 0;
+  const b = $("inferred");
+  b.hidden = !inferredCount;
+  if (svgEl) svgEl.classList.add("hide-inferred");
+  b.textContent = `Show inferred (${inferredCount})`;
+}
+
+function toggleInferred() {
+  if (!svgEl || !inferredCount) return;
+  const hidden = svgEl.classList.toggle("hide-inferred");
+  $("inferred").textContent = `${hidden ? "Show" : "Hide"} inferred (${inferredCount})`;
 }
 
 // ---- search ----------------------------------------------------------------
@@ -203,6 +234,12 @@ async function downloadSvg() {
     out.setAttribute("height", `${b.height}pt`);
   }
   out.querySelectorAll("style.oi-style, path.oi-hit").forEach((n) => n.remove());
+  // Keep the inferred-view stylesheet even if svg-pan-zoom left it outside the
+  // viewport group we copied from.
+  if (!out.querySelector("style.o2u-style")) {
+    const st = svgEl.querySelector("style.o2u-style");
+    if (st) out.insertBefore(doc.importNode(st, true), out.firstChild);
+  }
   out.querySelectorAll(".oi-hl, .oi-sel, .oi-drag, .node--hit, .node--current")
     .forEach((n) => n.classList.remove("oi-hl", "oi-sel", "oi-drag", "node--hit", "node--current"));
 
@@ -272,6 +309,17 @@ window.addEventListener("DOMContentLoaded", () => {
   $("fit").addEventListener("click", refit);
   $("download").addEventListener("click", downloadSvg);
   $("clearFocus").addEventListener("click", () => interact && interact.clear());
+  $("inferred").addEventListener("click", toggleInferred);
+  // svg-pan-zoom swallows the mouse's default action, so clicking the diagram
+  // would otherwise leave keyboard focus in the search box (and "i" or Esc
+  // would type into it). Release focus when the diagram is pressed.
+  $("viewport").addEventListener("pointerdown", () => {
+    const a = document.activeElement;
+    if (a && a.tagName === "INPUT") a.blur();
+  }, true);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "i" && e.target.tagName !== "INPUT") toggleInferred();
+  });
   $("spread").addEventListener("click", spreadToFit);
   $("resetLayout").addEventListener("click", () => {
     if (!interact) return;

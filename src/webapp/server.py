@@ -14,7 +14,8 @@ from flask import Flask, request, jsonify, send_from_directory
 # Make the sibling `owl2uml` package importable.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from owl2uml.parse import parse_ontology          # noqa: E402
+from owl2uml.parse import load_graph, parse_ontology  # noqa: E402
+from owl2uml import reason                         # noqa: E402
 from owl2uml.postprocess import postprocess       # noqa: E402
 from owl2uml.dot import dot_available, render_dot_svg  # noqa: E402
 from owl2uml.layout import layout                  # noqa: E402
@@ -66,7 +67,13 @@ def render():
             tmp.write(data)
             tmp_path = tmp.name
 
-        model = parse_ontology(tmp_path, fmt=fmt)
+        graph = load_graph(tmp_path, fmt=fmt)
+        model = parse_ontology(tmp_path, graph=graph)
+        engine_req = request.form.get("reason") or "none"
+        if engine_req not in reason.ENGINES:
+            engine_req = "none"
+        inf = reason.classify(graph, engine_req)
+        reason.apply(model, inf)
         # "keep_unused=1" keeps imported upper-level classes the ontology
         # never reaches (left out by default).
         report = postprocess(model, prune=request.form.get("keep_unused") not in ("1", "true", "on"))
@@ -93,6 +100,7 @@ def render():
         classes=len(model.classes),
         edges=len(model.edges),
         pruned=report["pruned"],
+        reasoning=inf.report(),
         groups=[
             {"name": g.name, "color": g.color, "count": g.count, "upper": g.upper}
             for g in sorted(model.groups.values(), key=lambda g: (g.upper, g.name))
@@ -104,7 +112,8 @@ def main() -> None:
     port = int(os.environ.get("PORT", "5000"))
     host = os.environ.get("HOST", "127.0.0.1")
     print(f"owl2uml web UI on http://{host}:{port}  (engine: "
-          f"{'graphviz' if dot_available() else 'builtin'})")
+          f"{'graphviz' if dot_available() else 'builtin'}; reasoner: "
+          f"{'hermit' if reason.hermit_available() else 'owlrl'})")
     app.run(host=host, port=port, debug=False, threaded=True)
 
 

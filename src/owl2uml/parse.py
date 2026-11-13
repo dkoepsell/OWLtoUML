@@ -194,8 +194,14 @@ def _is_datatype(g: Graph, node) -> bool:
         or (node, RDF.type, RDFS.Datatype) in g)
 
 
-def parse_ontology(path: str, fmt: str | None = None) -> UModel:
-    g = _parse_graph(path, fmt)
+def load_graph(path: str, fmt: str | None = None) -> Graph:
+    """Parse a file into an rdflib Graph (with format fallbacks)."""
+    return _parse_graph(path, fmt)
+
+
+def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None) -> UModel:
+    """Build the UML model. Pass ``graph`` to reuse an already-parsed graph."""
+    g = graph if graph is not None else _parse_graph(path, fmt)
 
     m = UModel()
     labels = _build_labels(g)

@@ -4,7 +4,8 @@ from __future__ import annotations
 import argparse
 import sys
 
-from .parse import parse_ontology
+from .parse import load_graph, parse_ontology
+from . import reason
 from .postprocess import postprocess
 from .layout import layout
 from .render import render_svg
@@ -35,16 +36,23 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--compact-labels", choices=["auto", "on", "off"], default="auto",
                     help="place relation labels after layout so they do not widen "
                          "the diagram (auto: 40+ classes)")
+    ap.add_argument("--reason", choices=list(reason.ENGINES), default="none",
+                    help="classify with a reasoner and draw what it infers in orange: "
+                         "'hermit' (OWL 2 DL, needs Java), 'owlrl' (OWL 2 RL, pure "
+                         "Python), 'auto' (hermit if available, else owlrl)")
     args = ap.parse_args(argv)
 
     out = args.output or _default_out(args.input)
 
     try:
-        model = parse_ontology(args.input, fmt=args.format)
+        graph = load_graph(args.input, fmt=args.format)
+        model = parse_ontology(args.input, graph=graph)
     except Exception as exc:  # noqa: BLE001 - surface parse errors clearly
         print(f"error: failed to parse '{args.input}': {exc}", file=sys.stderr)
         return 1
 
+    inf = reason.classify(graph, args.reason)
+    reason.apply(model, inf)
     report = postprocess(model, prune=not args.keep_unused)
 
     if not model.classes:
@@ -69,6 +77,17 @@ def main(argv: list[str] | None = None) -> int:
     print(f"engine: {engine}", file=sys.stderr)
 
     pruned = f", {report['pruned']} unused imported classes left out" if report["pruned"] else ""
+    if args.reason != "none":
+        r = inf.report()
+        if r["error"]:
+            print(f"reasoner ({r['engine']}) failed: {r['error']}", file=sys.stderr)
+        elif r["inconsistent"]:
+            print(f"reasoner ({r['engine']}): ontology is INCONSISTENT; "
+                  "no classification drawn", file=sys.stderr)
+        else:
+            print(f"reasoner ({r['engine']}, {r['seconds']}s): {r['inferred']} inferred "
+                  f"subclass relations drawn, {r['unsatisfiable']} unsatisfiable classes, "
+                  f"{r['equivalences']} inferred equivalences", file=sys.stderr)
     print(f"wrote {out}  ({len(model.classes)} classes, {len(model.edges)} relations{pruned})")
     return 0
 

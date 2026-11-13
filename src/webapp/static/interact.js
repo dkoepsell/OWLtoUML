@@ -409,6 +409,10 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
   // Wheel-zoom and drag-to-pan for an SVG opened on its own in a browser,
   // done by editing the viewBox (no svg-pan-zoom available there).
   function standalone(svg) {
+    // "i" shows/hides what a reasoner inferred (edges of class rel-inferred).
+    svg.ownerDocument.addEventListener("keydown", (ev) => {
+      if (ev.key === "i") svg.classList.toggle("hide-inferred");
+    });
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "100%");
     svg.style.width = "100vw";

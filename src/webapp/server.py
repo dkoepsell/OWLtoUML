@@ -20,6 +20,7 @@ from owl2uml.postprocess import postprocess       # noqa: E402
 from owl2uml.dot import dot_available, render_dot_svg  # noqa: E402
 from owl2uml.layout import layout                  # noqa: E402
 from owl2uml.render import render_svg              # noqa: E402
+from owl2uml.source import build_source            # noqa: E402
 
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
@@ -85,7 +86,15 @@ def render():
 
     try:
         if dot_available():
-            svg = render_dot_svg(model)
+            # The OWL behind each class and line, for the source panel
+            # ("source=0" leaves it out).
+            src = None
+            if request.form.get("source") not in ("0", "false", "off"):
+                try:
+                    src = build_source(graph, model)
+                except Exception:  # noqa: BLE001 - the diagram matters more
+                    src = None
+            svg = render_dot_svg(model, source=src)
             engine = "graphviz"
         else:
             w, h = layout(model)

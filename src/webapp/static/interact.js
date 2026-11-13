@@ -5,6 +5,9 @@
  *   click it again  → quickly: widen the focus by one more hop; later: unpin
  *   click a line    → jump to the class at its far end
  *   drag a class    → move it; connected lines follow
+ *   s               → show/hide the source panel: the OWL a clicked class or
+ *                     line was drawn from (when the SVG embeds it, see
+ *                     owl2uml/source.py)
  *   Esc             → clear focus
  *
  * No dependencies. Used by the web viewer and inlined into downloaded SVGs
@@ -26,6 +29,41 @@ g.edge { cursor: pointer; }
 svg.oi-focus g.node:not(.oi-hl), svg.oi-focus g.edge:not(.oi-hl) { opacity: 0.12; }
 svg.oi-focus g.edge.oi-hl path:not(.oi-hit) { stroke-width: 2.6px; }
 g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800); }
+.o2u-src { box-sizing: border-box; height: 100%; display: flex; flex-direction: column;
+  background: #fffdf8; border: 1px solid #c9c4b6; border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.18); font: 13px/1.45 Helvetica, Arial, sans-serif; color: #2b2a27; }
+.o2u-src[hidden] { display: none; }
+.o2u-src * { box-sizing: border-box; }
+.o2u-src-head { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px 4px; }
+.o2u-src-title { flex: 1; font-size: 15px; font-weight: 600; word-break: break-word; }
+.o2u-src-kind { font-size: 11px; color: #6b675e; text-transform: uppercase; letter-spacing: .04em; }
+.o2u-src button { font: inherit; font-size: 12px; border: 1px solid #c9c4b6; background: #f3f0e7;
+  border-radius: 5px; padding: 2px 8px; cursor: pointer; color: inherit; }
+.o2u-src button:hover { background: #e9e4d6; }
+.o2u-src button.on { background: #2b2a27; color: #fff; border-color: #2b2a27; }
+.o2u-src-x { border: none !important; background: none !important; font-size: 18px !important; line-height: 1; }
+.o2u-src-id { padding: 0 12px 8px; font-size: 12px; color: #6b675e; word-break: break-all; }
+.o2u-src-id a { color: #3a5a8c; }
+.o2u-src-tabs { display: flex; gap: 4px; padding: 0 12px 8px; border-bottom: 1px solid #e3dfd3; }
+.o2u-src-tabs .o2u-copy { margin-left: auto; }
+.o2u-src-body { flex: 1; overflow: auto; padding: 10px 12px 14px; }
+.o2u-src-body p { margin: 0 0 8px; }
+.o2u-src-body h4 { margin: 12px 0 4px; font-size: 11px; color: #6b675e; text-transform: uppercase; letter-spacing: .04em; }
+.o2u-src-body dl { margin: 0; }
+.o2u-src-body dt { font-size: 11px; color: #6b675e; margin-top: 6px; }
+.o2u-src-body dd { margin: 0; }
+.o2u-src-body pre { margin: 0; white-space: pre-wrap; word-break: break-word;
+  font: 12px/1.45 Menlo, Consolas, monospace; background: #f6f4ee; border-radius: 5px; padding: 8px; }
+.o2u-ax { margin: 0 0 6px; padding: 6px 8px; background: #f6f4ee; border-radius: 5px;
+  font: 12px/1.45 Menlo, Consolas, monospace; word-break: break-word; }
+.o2u-ax b { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #6b675e; font-weight: 600; margin-right: 6px; }
+.o2u-ax.inf { border-left: 3px solid #d9822b; }
+.o2u-refs { margin-top: 2px; }
+.o2u-ref { display: inline-block; margin: 2px 4px 0 0; padding: 0 6px; border-radius: 9px;
+  background: #e8eef7; color: #3a5a8c; font-size: 11px; cursor: pointer; }
+.o2u-ref.prop { background: #eef3ea; color: #47663a; }
+.o2u-note { font-size: 12px; color: #6b675e; }
+.o2u-src-fo { overflow: visible; }
 `;
 
   const titleOf = (g) => {
@@ -269,6 +307,27 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
 
     const restore = () => showNodes(pinned, hops);
 
+    // ---- source panel (the OWL behind a class or line) --------------------
+    const source = readSource(svg);
+    const nodeOf = new Map();  // class IRI -> node title
+    if (source) Object.entries(source.nodes).forEach(([n, iri]) => nodeOf.set(iri, n));
+    let panel = null;
+    if (source) {
+      const host = opts.sourceHost || (opts.standalone ? overlayHost(svg) : null);
+      if (host) {
+        panel = sourcePanel(host, source, {
+          goClass(iri) {
+            const n = nodeOf.get(iri);
+            if (!n) return false;
+            pinned = new Set([n]); hops = 1; restore();
+            navigate(nodes.get(n).g);
+            panel.showClass(iri);
+            return true;
+          },
+        });
+      }
+    }
+
     function pin(id, additive) {
       const now = Date.now();
       if (additive) {
@@ -282,10 +341,11 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       }
       lastPin = { id, at: now };
       restore();
+      if (panel && pinned.has(id)) panel.showClass(source.nodes[id]);
       if (opts.onFocus) opts.onFocus([...pinned], hops);
     }
 
-    function clear() { pinned = new Set(); hops = 1; restore(); }
+    function clear() { pinned = new Set(); hops = 1; restore(); if (panel) panel.hide(); }
 
     function navigate(g) {
       if (opts.onNavigate) return opts.onNavigate(g);
@@ -295,6 +355,7 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       const vb = svg.viewBox.baseVal;
       vb.x -= ((c.left + c.width / 2) - (r.left + r.width / 2)) / k;
       vb.y -= ((c.top + c.height / 2) - (r.top + r.height / 2)) / k;
+      svg.dispatchEvent(new Event("o2u-view"));
     }
 
     // ---- events -----------------------------------------------------------
@@ -359,6 +420,7 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       const far = dist(e.s) > dist(e.t) ? e.s : e.t;
       navigate(nodes.get(far).g);
       if (!pinned.size) showEdge(e);
+      if (panel && e.g.id) panel.showEdge(e.g.id);
     }
 
     function onOver(ev) {
@@ -377,6 +439,8 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
 
     function onKey(ev) {
       if (ev.key === "Escape") clear();
+      const typing = ev.target && /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName);
+      if (ev.key === "s" && panel && !typing && !ev.ctrlKey && !ev.metaKey) panel.toggle();
     }
 
     svg.addEventListener("pointerdown", onDown, true);
@@ -388,7 +452,8 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
     if (opts.standalone) standalone(svg);
 
     return {
-      pin: (id) => { pinned = new Set([id]); hops = 1; restore(); },
+      pin: (id) => { pinned = new Set([id]); hops = 1; restore(); if (panel) panel.showClass(source.nodes[id]); },
+      panel: () => panel,
       idOf: (g) => titleOf(g),
       clear,
       reset,
@@ -401,6 +466,7 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
         svg.removeEventListener("mouseover", onOver);
         svg.removeEventListener("mouseout", onOut);
         doc.removeEventListener("keydown", onKey);
+        if (panel) panel.destroy();
         onUp();
       },
     };
@@ -429,6 +495,7 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       vb.y = p.y - (p.y - vb.y) * k;
       vb.width *= k;
       vb.height *= k;
+      svg.dispatchEvent(new Event("o2u-view"));
     }, { passive: false });
 
     let pan = null;
@@ -439,8 +506,242 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       if (!pan) return;
       vb.x = pan.vx - (ev.clientX - pan.x) / pan.k;
       vb.y = pan.vy - (ev.clientY - pan.y) / pan.k;
+      svg.dispatchEvent(new Event("o2u-view"));
     });
     svg.ownerDocument.addEventListener("mouseup", () => { pan = null; });
+  }
+
+  // ---- source panel -------------------------------------------------------
+  // The SVG may carry the OWL its classes and lines were drawn from, as JSON
+  // in <script type="application/json" id="o2u-source"> (owl2uml/source.py):
+  //   classes/props: iri → {iri, curie, label, name, frame, ann:[[name, value]],
+  //                         ax:[{k, m, refs}], ttl}
+  //   nodes: "n3" → class IRI;  edges: "e12" → {src, dst, kind, label,
+  //                         axioms:[[iri, i]] | props:[iri] | premises:{classes, props}}
+  function readSource(svg) {
+    const el = svg.querySelector("script#o2u-source, script[id='o2u-source']");
+    if (!el) return null;
+    try { return JSON.parse(el.textContent); } catch (_) { return null; }
+  }
+
+  const an = (w) => (/^[aeiou]/i.test(w) ? "an " : "a ") + w;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  // Manchester-syntax frame (mirrors owl2uml.source.manchester).
+  function frame(ent, only) {
+    const lines = [`${ent.frame}: ${ent.name}`];
+    if (!only) {
+      const parts = [`rdfs:label ${JSON.stringify(ent.label)}`]
+        .concat(ent.ann.map(([n, v]) => `${n} ${JSON.stringify(v)}`));
+      lines.push("    Annotations:");
+      parts.forEach((a, i) => lines.push(`        ${a}${i < parts.length - 1 ? "," : ""}`));
+    }
+    const axs = only ? only.map((i) => ent.ax[i]) : ent.ax;
+    const kinds = [...new Set(axs.map((a) => a.k))];
+    for (const k of kinds) {
+      const same = axs.filter((a) => a.k === k);
+      lines.push(`    ${k}:`);
+      same.forEach((a, i) => lines.push(`        ${a.m}${i < same.length - 1 ? "," : ""}`));
+    }
+    return lines.join("\n");
+  }
+
+  // A <foreignObject> pinned to the window's right edge, for an SVG opened on
+  // its own (no HTML page around it). Re-placed after every zoom or pan.
+  function overlayHost(svg) {
+    const doc = svg.ownerDocument;
+    const fo = doc.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+    fo.setAttribute("class", "o2u-src-fo");
+    const div = doc.createElementNS("http://www.w3.org/1999/xhtml", "div");
+    div.style.height = "100%";
+    fo.appendChild(div);
+    svg.appendChild(fo);
+    const W = 420, M = 12;
+    function place() {
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return;
+      const r = svg.getBoundingClientRect();
+      const vw = Math.min(r.width, doc.documentElement.clientWidth || r.width);
+      const vh = Math.min(r.height, (doc.defaultView && doc.defaultView.innerHeight) || r.height);
+      const w = Math.min(W, vw - 2 * M);
+      const p = new DOMPoint(r.left + vw - w - M, r.top + M).matrixTransform(ctm.inverse());
+      fo.setAttribute("x", 0);
+      fo.setAttribute("y", 0);
+      fo.setAttribute("width", w);
+      fo.setAttribute("height", Math.max(200, vh - 2 * M));
+      fo.setAttribute("transform", `translate(${p.x} ${p.y}) scale(${1 / ctm.a})`);
+    }
+    svg.addEventListener("o2u-view", place);
+    (doc.defaultView || window).addEventListener("resize", place);
+    return { el: div, fo, place };
+  }
+
+  function sourcePanel(host, src, hooks) {
+    // XHTML namespace: in a standalone SVG the document is XML, where a plain
+    // createElement("div") would not be laid out as HTML.
+    const box = (host.el || host).ownerDocument.createElementNS("http://www.w3.org/1999/xhtml", "div");
+    const root = host.el || host;
+    box.className = "o2u-src";
+    box.hidden = true;
+    root.appendChild(box);
+    if (host.fo) host.fo.style.display = "none";
+    // Keep presses, clicks and wheel inside the panel from reaching the diagram.
+    ["pointerdown", "mousedown", "click", "dblclick", "wheel", "touchstart"].forEach((t) =>
+      box.addEventListener(t, (ev) => ev.stopPropagation()));
+
+    let tab = "summary";
+    let view = null;       // {title, kind, iri, curie, summary(html), man, ttl}
+    let wanted = true;     // false after "s" hides it: clicks then don't reopen it
+
+    const cls = (iri) => src.classes[iri];
+    const prp = (iri) => src.props[iri];
+    const lbl = (iri) => (cls(iri) || prp(iri) || { label: iri }).label;
+
+    function refs(list) {
+      const chips = list.filter((r) => cls(r) || prp(r)).map((r) =>
+        `<span class="o2u-ref${prp(r) ? " prop" : ""}" data-ref="${esc(r)}" title="${esc(r)}">${esc(lbl(r))}</span>`);
+      return chips.length ? `<div class="o2u-refs">${chips.join("")}</div>` : "";
+    }
+    const axHtml = (a, extra) =>
+      `<div class="o2u-ax${extra || ""}"><b>${esc(a.k)}</b>${esc(a.m)}${refs(a.refs)}</div>`;
+    function annHtml(ent) {
+      if (!ent.ann.length) return "";
+      return "<dl>" + ent.ann.map(([n, v]) => `<dt>${esc(n)}</dt><dd>${esc(v)}</dd>`).join("") + "</dl>";
+    }
+
+    function classView(iri) {
+      const c = cls(iri);
+      if (!c) return null;
+      const summary = annHtml(c) +
+        (c.ax.length ? "<h4>Axioms</h4>" + c.ax.map((a) => axHtml(a)).join("")
+                     : '<p class="o2u-note">No logical axioms: the class is only declared here.</p>');
+      return { title: c.label, kind: "class", iri: c.iri, curie: c.curie, summary, man: frame(c), ttl: c.ttl };
+    }
+
+    function propView(iri) {
+      const p = prp(iri);
+      if (!p) return null;
+      const summary = annHtml(p) + (p.ax.length ? "<h4>Axioms</h4>" + p.ax.map((a) => axHtml(a)).join("") : "");
+      return { title: p.label, kind: "property", iri: p.iri, curie: p.curie, summary, man: frame(p), ttl: p.ttl };
+    }
+
+    const WHAT = {
+      generalization: (s, d) => `Every <i>${s}</i> is ${an(d).slice(0, -d.length)}<i>${d}</i>. The line is drawn from this axiom:`,
+      definition: (s, d) => `<i>${s}</i> is defined as, among other things, a kind of <i>${d}</i>. ` +
+        "The definition gives necessary and sufficient conditions, so anything that meets it is classified here:",
+      restriction: (s, d, l) => `A rule on every <i>${s}</i>: <b>${l}</b> <i>${d}</i>. Stated by:`,
+      equivalent: (s, d) => `<i>${s}</i> and <i>${d}</i> are the same class. Stated by:`,
+      association: (s, d, l) => `The relation <b>${l}</b> links <i>${s}</i> (its domain) to <i>${d}</i> (its range). Declared in:`,
+    };
+
+    function edgeView(eid) {
+      const e = src.edges[eid];
+      if (!e) return null;
+      const s = esc(lbl(e.src)), d = esc(lbl(e.dst)), l = esc((e.label || "").replace(/\n/g, "; "));
+      const title = `${lbl(e.src)} → ${lbl(e.dst)}`;
+      let summary, man, ttl;
+      const classAx = (pairs, extra) => pairs.map(([iri, i]) => axHtml(cls(iri).ax[i], extra)).join("");
+      const classFrames = (pairs) => {
+        const by = new Map();
+        pairs.forEach(([iri, i]) => { if (!by.has(iri)) by.set(iri, []); by.get(iri).push(i); });
+        return [...by].map(([iri, is]) => frame(cls(iri), is)).join("\n\n");
+      };
+      const ttlOf = (iris) => [...new Set(iris)].map((i) => (cls(i) || prp(i)).ttl).join("\n\n");
+      if (e.kind === "inferred") {
+        const pr = e.premises || { classes: [], props: [] };
+        summary = `<p>Inferred by the reasoner: every <i>${s}</i> is ${an(d).slice(0, -d.length)}<i>${d}</i>. ` +
+          "No axiom in the file says so directly.</p>" +
+          "<h4>It follows from</h4>" + classAx(pr.classes, " inf") +
+          pr.props.map((p) => prp(p).ax.filter((a) => /SubProperty|Chain|Inverse/.test(a.k))
+            .map((a) => axHtml({ k: `${prp(p).label}: ${a.k}`, m: a.m, refs: a.refs }, " inf")).join("")).join("") +
+          '<p class="o2u-note">These are the axioms such an inference usually rests on: the ' +
+          "subclass's own axioms, the superclass's definition, and the property hierarchy " +
+          "between them. A reasoner's explanation service would give the exact minimal set.</p>";
+        man = "# inferred, not asserted: " + `${lbl(e.src)} SubClassOf ${lbl(e.dst)}\n\n` +
+          [classFrames(pr.classes)].concat(pr.props.map((p) => frame(prp(p)))).join("\n\n");
+        ttl = "# no triple states this; the axioms it rests on:\n\n" +
+          ttlOf(pr.classes.map((c) => c[0]).concat(pr.props));
+      } else if (e.kind === "association") {
+        const ps = e.props || [];
+        summary = `<p>${WHAT.association(s, d, l)}</p>` +
+          ps.map((p) => `<h4>${esc(prp(p).label)}</h4>` + prp(p).ax.map((a) => axHtml(a)).join("") + refs([p])).join("");
+        man = ps.map((p) => frame(prp(p))).join("\n\n");
+        ttl = ttlOf(ps);
+      } else {
+        const ax = e.axioms || [];
+        summary = `<p>${(WHAT[e.kind] || WHAT.generalization)(s, d, l)}</p>` + classAx(ax) +
+          `<p class="o2u-note">${refs([e.src, e.dst])}</p>`;
+        man = classFrames(ax);
+        ttl = ttlOf(ax.map((a) => a[0]));
+      }
+      const kind = { generalization: "subclass of", definition: "defined as a kind of",
+        restriction: "restriction", equivalent: "equivalent class", association: "relation",
+        inferred: "inferred subclass of" }[e.kind] || e.kind;
+      return { title, kind, summary, man, ttl };
+    }
+
+    function render() {
+      if (!view) return;
+      const id = view.iri
+        ? `<div class="o2u-src-id"><a href="${esc(view.iri)}" target="_blank" rel="noopener">${esc(view.curie)}</a>` +
+          (view.curie !== view.iri ? ` · ${esc(view.iri)}` : "") + "</div>"
+        : "";
+      const body = tab === "summary" ? view.summary
+        : `<pre>${esc(tab === "man" ? view.man : view.ttl)}</pre>`;
+      box.innerHTML =
+        `<div class="o2u-src-head"><div class="o2u-src-title"><div class="o2u-src-kind">${esc(view.kind)}</div>` +
+        `${esc(view.title)}</div><button class="o2u-src-x" title="Hide (s)">×</button></div>` + id +
+        '<div class="o2u-src-tabs">' +
+        [["summary", "Summary"], ["man", "Manchester"], ["ttl", "Turtle"]].map(([k, t]) =>
+          `<button data-tab="${k}"${k === tab ? ' class="on"' : ""}>${t}</button>`).join("") +
+        '<button class="o2u-copy" title="Copy the Manchester or Turtle text">Copy</button></div>' +
+        `<div class="o2u-src-body">${body}</div>`;
+    }
+
+    box.addEventListener("click", (ev) => {
+      const t = ev.target;
+      if (t.closest(".o2u-src-x")) { hide(); return; }
+      const tb = t.closest("[data-tab]");
+      if (tb) { tab = tb.getAttribute("data-tab"); render(); return; }
+      if (t.closest(".o2u-copy")) {
+        const text = tab === "ttl" ? view.ttl : view.man;
+        const b = t.closest(".o2u-copy");
+        const done = () => { b.textContent = "Copied"; setTimeout(() => { b.textContent = "Copy"; }, 1200); };
+        try { navigator.clipboard.writeText(text).then(done, () => {}); } catch (_) { /* no clipboard */ }
+        return;
+      }
+      const r = t.closest("[data-ref]");
+      if (r) {
+        const iri = r.getAttribute("data-ref");
+        if (cls(iri) && hooks.goClass(iri)) return;   // pins the class, which shows it
+        show(cls(iri) ? classView(iri) : propView(iri));
+      }
+    });
+
+    function show(v) {
+      if (!v) return;
+      view = v;
+      render();
+      if (!wanted) return;
+      box.hidden = false;
+      if (host.fo) { host.fo.style.display = ""; host.place(); }
+    }
+    function hide() {
+      box.hidden = true;
+      if (host.fo) host.fo.style.display = "none";
+    }
+
+    return {
+      showClass: (iri) => show(classView(iri)),
+      showEdge: (eid) => show(edgeView(eid)),
+      hide,
+      toggle() {
+        if (box.hidden) { wanted = true; if (view) show(view); }
+        else { wanted = false; hide(); }
+      },
+      get visible() { return !box.hidden; },
+      destroy() { box.remove(); if (host.fo) host.fo.remove(); },
+    };
   }
 
   global.OwlUmlInteract = { attach };

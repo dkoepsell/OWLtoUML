@@ -1,0 +1,33 @@
+@prefix :     <http://example.org/law/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix obo:  <http://purl.obolibrary.org/obo/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+# Fixture for the source panel: annotations (with characters that must be
+# escaped inside an SVG), a defined class, a restriction, a domain/range
+# relation, a disjointness axiom, and a sub-property inference.
+<http://example.org/law/source.owl> a owl:Ontology .
+
+obo:BFO_0000015 a owl:Class ; rdfs:label "process"@en .
+:Act a owl:Class ; rdfs:label "legal act"@en ; rdfs:subClassOf obo:BFO_0000015 ;
+    obo:IAO_0000115 "A process that changes legal content."@en ;
+    rdfs:comment "Tricky text: a < b & c > d </script> \"quoted\"."@en .
+:Content a owl:Class ; rdfs:label "legal content"@en .
+:Order a owl:Class ; rdfs:label "legal order"@en ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty :hasCriterion ;
+                      owl:someValuesFrom :Criterion ] .
+:Criterion a owl:Class ; rdfs:label "recognition criterion"@en .
+[] a owl:AllDisjointClasses ; owl:members ( :Content :Order :Criterion ) .
+
+:amends a owl:ObjectProperty ; rdfs:label "amends"@en ;
+    rdfs:domain :Act ; rdfs:range :Content .
+:repeals a owl:ObjectProperty ; rdfs:label "repeals"@en ; rdfs:subPropertyOf :amends .
+:hasCriterion a owl:ObjectProperty ; rdfs:label "has recognition criterion"@en .
+
+:Amending a owl:Class ; rdfs:label "amending act"@en ;
+    owl:equivalentClass [ owl:intersectionOf ( :Act
+        [ a owl:Restriction ; owl:onProperty :amends ; owl:someValuesFrom :Content ] ) ] .
+:Repeal a owl:Class ; rdfs:label "repeal"@en ;
+    owl:equivalentClass [ owl:intersectionOf ( :Act
+        [ a owl:Restriction ; owl:onProperty :repeals ; owl:someValuesFrom :Content ] ) ] .

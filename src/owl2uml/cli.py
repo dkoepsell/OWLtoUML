@@ -10,6 +10,7 @@ from .postprocess import postprocess
 from .layout import layout
 from .render import render_svg
 from .dot import dot_available, render_dot_svg
+from .source import build_source, inline_viewer
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -40,6 +41,13 @@ def main(argv: list[str] | None = None) -> int:
                     help="classify with a reasoner and draw what it infers in orange: "
                          "'hermit' (OWL 2 DL, needs Java), 'owlrl' (OWL 2 RL, pure "
                          "Python), 'auto' (hermit if available, else owlrl)")
+    ap.add_argument("--no-source", action="store_true",
+                    help="do not embed the OWL source of each class and line "
+                         "(clicking a class then shows no source panel)")
+    ap.add_argument("--interactive", action="store_true",
+                    help="inline the viewer script, so the SVG opened in a browser "
+                         "supports hover, pin, drag, zoom, the source panel (s) and "
+                         "the inferred toggle (i)")
     args = ap.parse_args(argv)
 
     out = args.output or _default_out(args.input)
@@ -66,7 +74,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if use_dot:
-        svg = render_dot_svg(model, legend=not args.no_legend, compact_labels=args.compact_labels)
+        src = None if args.no_source else build_source(graph, model)
+        svg = render_dot_svg(model, legend=not args.no_legend,
+                             compact_labels=args.compact_labels, source=src)
+        if args.interactive:
+            svg = inline_viewer(svg)
         engine = "graphviz dot"
     else:
         w, h = layout(model)

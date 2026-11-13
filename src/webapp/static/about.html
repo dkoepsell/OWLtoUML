@@ -162,6 +162,49 @@
         (Second Edition)</em>, section 4: OWL 2 RL.</li>
     </ul>
 
+    <h3>Source: from the picture back to the axioms</h3>
+    <p>
+      A diagram summarises; the <strong>source panel</strong> shows what it
+      summarises. Click a class to see its IRI (linked, so a BFO term opens its
+      published page), its definition and other annotations, and its logical
+      axioms in three views: a <em>Summary</em>, <em>Manchester syntax</em>
+      (the readable OWL notation used by Prot&eacute;g&eacute;), and the
+      <em>Turtle</em> triples as they stand in the file. Click a line to see
+      the axiom that produced it: the <code>SubClassOf</code> or
+      <code>EquivalentTo</code> axiom behind a subclass, definition or
+      restriction line, or the property's domain and range behind a relation
+      line. Names in an axiom are links to their own entries; <kbd>s</kbd>
+      shows or hides the panel, and <em>Copy</em> copies the current view.
+    </p>
+    <p>
+      An <strong>inferred</strong> line has no axiom of its own. Its panel lists
+      the axioms such an inference usually rests on: the subclass's own axioms,
+      the superclass's definition, and the property hierarchy (sub-properties,
+      chains) connecting the properties the two mention. This is a heuristic,
+      not a justification in the technical sense: the minimal set of axioms
+      that entails a conclusion is found by a reasoner's explanation service,
+      which is planned as a later addition.
+    </p>
+    <p>
+      The source travels with the diagram as a JSON block inside the SVG
+      (<code>&lt;script type="application/json" id="o2u-source"&gt;</code>), so
+      a downloaded diagram shows it offline, and the CLI's
+      <code>--interactive</code> option writes such a file directly.
+      <code>--no-source</code> leaves it out. Each class's Turtle is its
+      concise bounded description: its own triples, following blank nodes, plus
+      annotated axioms and disjointness axioms that name it.
+    </p>
+    <ul>
+      <li><strong>Horridge, M., Drummond, N., Goodwin, J., Rector, A., Stevens, R.,
+        &amp; Wang, H. (2006).</strong> The Manchester OWL Syntax. <em>OWL:
+        Experiences and Directions (OWLED 2006)</em>.</li>
+      <li><strong>Kalyanpur, A., Parsia, B., Horridge, M., &amp; Sirin, E.
+        (2007).</strong> Finding all justifications of OWL DL entailments.
+        <em>The Semantic Web: ISWC 2007</em>, LNCS 4825, 267&ndash;280.</li>
+      <li><strong>Stickler, P. (2005).</strong> <em>CBD: Concise Bounded
+        Description</em>. W3C Member Submission.</li>
+    </ul>
+
     <h2>2. Layered layout (layer assignment &amp; Graphviz <code>dot</code>)</h2>
     <p>
       Each class's rank is computed as <code>1 + max(parent depths)</code> over

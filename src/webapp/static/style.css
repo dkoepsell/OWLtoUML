@@ -185,3 +185,10 @@ footer#status .about-link {
   white-space: nowrap;
 }
 footer#status .about-link:hover { text-decoration: underline; }
+
+/* OWL source panel (filled by interact.js; empty and invisible until a click) */
+.source-panel {
+  position: absolute; top: 12px; right: 12px; bottom: 12px;
+  width: min(420px, calc(100% - 24px)); pointer-events: none; z-index: 5;
+}
+.source-panel .o2u-src { pointer-events: auto; }

@@ -12,6 +12,7 @@ import subprocess
 from html import escape as _h
 from pathlib import Path
 
+from .source import embed as embed_source
 from .model import UModel, UClass
 from .postprocess import DEFAULT_COLOR, UPPER_COLOR, shade, tint
 
@@ -287,11 +288,14 @@ def _run_engine(dot: str, engine: str, src: bytes, env: dict | None,
 _XLABEL_MIN = 40
 
 
-def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto") -> str:
+def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
+                   source: dict | None = None) -> str:
     """Render with Graphviz.
 
     ``compact_labels``: "auto" (diagrams of 40+ classes), "on", "off". When on,
     relation labels do not take up layout space (see _XLABEL_MIN).
+    ``source``: output of source.build_source(), embedded so a click on a
+    class or line can show the OWL it was drawn from.
     """
     dot, env = _gv()
     if not dot:
@@ -315,5 +319,6 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto")
     if "<svg" in out:
         # Insert the inferred-view stylesheet just inside the root element.
         i = out.find(">", out.find("<svg")) + 1
-        return out[:i] + "\n" + SVG_STYLE + out[i:]
+        out = out[:i] + "\n" + SVG_STYLE + out[i:]
+        return embed_source(out, source) if source else out
     raise RuntimeError(proc.stderr.decode("utf-8", "replace") or "dot produced no SVG")

@@ -94,7 +94,10 @@ function mountSvg(svgText) {
     dblClickZoomEnabled: false,
   });
   // Hover/pin/drag/follow-the-line behaviour (static/interact.js).
-  interact = OwlUmlInteract.attach(svgEl, { onNavigate: centerOn });
+  // Clicking a class or line shows its OWL source in the side panel.
+  $("sourcePanel").innerHTML = "";
+  interact = OwlUmlInteract.attach(svgEl, { onNavigate: centerOn, sourceHost: $("sourcePanel") });
+  $("source").hidden = !interact.panel();
 
   matches = [];
   matchIdx = -1;
@@ -240,6 +243,11 @@ async function downloadSvg() {
     const st = svgEl.querySelector("style.o2u-style");
     if (st) out.insertBefore(doc.importNode(st, true), out.firstChild);
   }
+  // Keep the embedded OWL source, so the file's source panel works offline.
+  if (!out.querySelector("[id='o2u-source']")) {
+    const js = svgEl.querySelector("[id='o2u-source']");
+    if (js) out.insertBefore(doc.importNode(js, true), out.firstChild);
+  }
   out.querySelectorAll(".oi-hl, .oi-sel, .oi-drag, .node--hit, .node--current")
     .forEach((n) => n.classList.remove("oi-hl", "oi-sel", "oi-drag", "node--hit", "node--current"));
 
@@ -310,6 +318,10 @@ window.addEventListener("DOMContentLoaded", () => {
   $("download").addEventListener("click", downloadSvg);
   $("clearFocus").addEventListener("click", () => interact && interact.clear());
   $("inferred").addEventListener("click", toggleInferred);
+  $("source").addEventListener("click", () => {
+    const p = interact && interact.panel();
+    if (p) p.toggle();
+  });
   // svg-pan-zoom swallows the mouse's default action, so clicking the diagram
   // would otherwise leave keyboard focus in the search box (and "i" or Esc
   // would type into it). Release focus when the diagram is pressed.

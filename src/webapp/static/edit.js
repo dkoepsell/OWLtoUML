@@ -13,10 +13,14 @@
     ["subclass", "is a (subclass of)"],
     ["some", "property some"],
     ["only", "property only"],
+    ["min", "property min n"],
+    ["max", "property max n"],
+    ["exactly", "property exactly n"],
     ["domain_range", "property domain → range"],
     ["equivalent", "equivalent to"],
   ];
-  const NEEDS_PROP = new Set(["some", "only", "domain_range"]);
+  const CARDS = new Set(["min", "max", "exactly"]);
+  const NEEDS_PROP = new Set(["some", "only", "domain_range", ...CARDS]);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const local = (iri) => iri.replace(/^.*[#/]/, "");
 
@@ -269,6 +273,8 @@
       ev.preventDefault(); ev.stopPropagation();
       const d = ev.target.closest(".o2u-draft-class");
       const g = ev.target.closest("g.node");
+      const ge = !d && !g && ev.target.closest("g.edge");
+      if (ge) { if (cx.src.edges[ge.id]) changeEdge(ev, ge.id); return; }
       const iri = d ? d.getAttribute("data-iri") : g ? cx.src.nodes[cx.it.idOf(g)] : null;
       if (iri) {
         popover(ev, `<label>Rename<input name="label" value="${esc(labelOf(iri))}"></label>`, (f) => {
@@ -295,6 +301,12 @@
       if (mod && ev.key.toLowerCase() === "z") { ev.preventDefault(); ev.shiftKey ? redo() : undo(); return; }
       if (mod && ev.key.toLowerCase() === "y") { ev.preventDefault(); redo(); return; }
       if ((ev.key === "Delete" || ev.key === "Backspace") && sel) { ev.preventDefault(); deleteSelected(ev); }
+      if (ev.key === "Enter" && sel && sel.type === "edge") {
+        ev.preventDefault();
+        const b = cx.svg.getElementById(sel.eid).getBoundingClientRect();
+        changeEdge({ clientX: b.left + b.width / 2, clientY: b.top + b.height / 2 }, sel.eid);
+        return;
+      }
       if (ev.key === "Escape") { sel = null; closePop(); if (cx) draw(); }
     }
     function deleteSelected(ev) {
@@ -334,32 +346,85 @@
         if (chosen.length) cb(chosen);
       });
     }
-    function newEdgePopover(ev, src, dst) {
+    // An edge spec (as drawn or stored) -> the popover's {kind, prop, n}.
+    function uiKind(e) {
+      if (e.kind === "generalization" || e.kind === "subclass") return { kind: "subclass" };
+      if (e.kind === "association" || e.kind === "domain_range") return { kind: "domain_range", prop: e.prop };
+      if (e.kind === "equivalent") return { kind: "equivalent" };
+      if (e.kind === "restriction" || e.kind === "some" || e.kind === "only") {
+        const q = (e.quant || (e.kind === "restriction" ? "some" : e.kind)).split(/\s+/);
+        return { kind: KINDS.some(([k]) => k === q[0]) ? q[0] : "some", prop: e.prop, n: q[1] };
+      }
+      return null;
+    }
+    // Popover choosing a relation (and property / count) between src and dst.
+    // cur prefills it; onPick(step) gets the add_property op (if any) + add_edge op.
+    function relationPopover(ev, src, dst, cur, onPick) {
       const props = Object.assign({}, cx.src.objprops || {});
       for (const o of ops()) if (o.op === "add_property") props[o.iri] = o.label;
-      const opts_ = Object.entries(props).sort((a, b) => a[1].localeCompare(b[1]))
-        .map(([iri, l]) => `<option value="${esc(l)}">${esc(local(iri))}</option>`).join("");
+      if (cur && cur.prop && !(cur.prop in props)) props[cur.prop] = labelOf(cur.prop);
+      // Property choices: the ontology's own, then standard sets (relations.js) it lacks.
+      const std = new Map();
+      const opt = (iri, l) => `<option value="${esc(iri)}"${cur && cur.prop === iri ? " selected" : ""}>${esc(l)}</option>`;
+      const own = Object.entries(props).sort((a, b) => a[1].localeCompare(b[1]));
+      let choices = own.length ? `<optgroup label="This ontology">${own.map(([iri, l]) => opt(iri, l)).join("")}</optgroup>` : "";
+      for (const { group, items } of window.OwlUmlRelations || []) {
+        const fresh = items.filter((r) => !(r.iri in props));
+        fresh.forEach((r) => std.set(r.iri, r.label));
+        if (fresh.length) choices += `<optgroup label="${esc(group)}">${fresh.map((r) => opt(r.iri, r.label)).join("")}</optgroup>`;
+      }
+      choices += `<option value="__new">New property…</option>`;
       popover(ev, `<div class="edit-pop-title">${esc(labelOf(src))} → ${esc(labelOf(dst))}</div>
-        <label>Relation<select name="kind">${KINDS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select></label>
-        <label class="propRow" hidden>Property<input name="prop" list="o2uProps" placeholder="existing or new name"></label>
-        <datalist id="o2uProps">${opts_}</datalist>`, (f) => {
+        <label>Relation<select name="kind">${KINDS.map(([k, l]) => `<option value="${k}"${cur && cur.kind === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+        <label class="propRow" hidden>Property<select name="prop">${choices}</select></label>
+        <label class="newRow" hidden>New property name<input name="newprop" placeholder="e.g. has component"></label>
+        <label class="nRow" hidden>Count<input name="n" type="number" min="0" step="1" value="${esc((cur && cur.n) || 1)}"></label>`, (f) => {
         const kind = f.kind.value, step = [];
         let prop;
         if (NEEDS_PROP.has(kind)) {
-          const name = f.prop.value.trim();
-          if (!name) return;
-          prop = Object.keys(props).find((iri) => props[iri] === name || local(iri) === name || iri === name);
-          if (!prop) { prop = mint(name, true); step.push({ op: "add_property", iri: prop, label: name }); }
+          prop = f.prop.value;
+          if (prop === "__new") {
+            const name = f.newprop.value.trim();
+            if (!name) return;
+            prop = Object.keys(props).find((iri) => props[iri] === name || local(iri) === name);
+            if (!prop) { prop = mint(name, true); step.push({ op: "add_property", iri: prop, label: name }); }
+          } else if (std.has(prop)) {
+            step.push({ op: "add_property", iri: prop, label: std.get(prop) });
+          }
         }
-        const op = { op: "add_edge", kind, src, dst };
+        let op = { op: "add_edge", kind, src, dst };
+        if (CARDS.has(kind)) {
+          const n = parseInt(f.n.value, 10);
+          if (!(n >= 0)) return;
+          op = { op: "add_edge", kind: "restriction", quant: `${kind} ${n}`, src, dst };
+        }
         if (prop) op.prop = prop;
         step.push(op);
-        push(step);
+        onPick(step);
       });
       const f = pop().querySelector("form");
-      const sync = () => { f.querySelector(".propRow").hidden = !NEEDS_PROP.has(f.kind.value); };
+      const sync = () => {
+        f.querySelector(".propRow").hidden = !NEEDS_PROP.has(f.kind.value);
+        f.querySelector(".newRow").hidden = !NEEDS_PROP.has(f.kind.value) || f.prop.value !== "__new";
+        f.querySelector(".nRow").hidden = !CARDS.has(f.kind.value);
+      };
       f.kind.addEventListener("change", sync);
+      f.prop.addEventListener("change", () => { sync(); if (f.prop.value === "__new") f.newprop.focus(); });
       sync();
+    }
+    function newEdgePopover(ev, src, dst) { relationPopover(ev, src, dst, null, push); }
+    // Change what an existing line means: delete its axiom, add the new one, as one step.
+    function changeEdge(ev, eid) {
+      const e = cx.src.edges[eid];
+      if (!e || e.kind === "inferred") return;
+      const parts = partsOf(eid);
+      const go = (part) => relationPopover(ev, part.src, part.dst, uiKind(part), (step) => {
+        push([{ op: "delete_edge", edge: part }, ...step]);
+      });
+      if (parts.length === 1) go(parts[0]);
+      else popover(ev, `<div class="edit-pop-title">Change which part of this line?</div>` + parts.map((p, i) =>
+        `<label class="chk"><input type="radio" name="part" value="${i}"${i ? "" : " checked"}> ${esc(partName(p))}</label>`).join(""),
+        (f) => { const i = +f.part.value; setTimeout(() => go(parts[i]), 0); });
     }
 
     // ---- undo / redo -----------------------------------------------------------------

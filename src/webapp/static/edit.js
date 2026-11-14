@@ -361,35 +361,37 @@
     // cur prefills it; onPick(step) gets the add_property op (if any) + add_edge op.
     function relationPopover(ev, src, dst, cur, onPick) {
       const props = Object.assign({}, cx.src.objprops || {});
-      for (const o of ops()) if (o.op === "add_property") props[o.iri] = o.label;
+      for (const o of ops()) if (o.op === "add_property" || (o.op === "rename" && o.iri in props)) props[o.iri] = o.label;
       if (cur && cur.prop && !(cur.prop in props)) props[cur.prop] = labelOf(cur.prop);
       // Property choices: the ontology's own, then standard sets (relations.js) it lacks.
       const std = new Map();
       const opt = (iri, l) => `<option value="${esc(iri)}"${cur && cur.prop === iri ? " selected" : ""}>${esc(l)}</option>`;
       const own = Object.entries(props).sort((a, b) => a[1].localeCompare(b[1]));
-      let choices = own.length ? `<optgroup label="This ontology">${own.map(([iri, l]) => opt(iri, l)).join("")}</optgroup>` : "";
+      let choices = `<option value="__new"${cur && cur.prop ? "" : " selected"}>New property…</option>`;
+      choices += own.length ? `<optgroup label="This ontology">${own.map(([iri, l]) => opt(iri, l)).join("")}</optgroup>` : "";
       for (const { group, items } of window.OwlUmlRelations || []) {
         const fresh = items.filter((r) => !(r.iri in props));
         fresh.forEach((r) => std.set(r.iri, r.label));
         if (fresh.length) choices += `<optgroup label="${esc(group)}">${fresh.map((r) => opt(r.iri, r.label)).join("")}</optgroup>`;
       }
-      choices += `<option value="__new">New property…</option>`;
       popover(ev, `<div class="edit-pop-title">${esc(labelOf(src))} → ${esc(labelOf(dst))}</div>
         <label>Relation<select name="kind">${KINDS.map(([k, l]) => `<option value="${k}"${cur && cur.kind === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
         <label class="propRow" hidden>Property<select name="prop">${choices}</select></label>
-        <label class="newRow" hidden>New property name<input name="newprop" placeholder="e.g. has component"></label>
+        <label class="newRow" hidden>Label<input name="plabel" placeholder="e.g. has component"></label>
         <label class="nRow" hidden>Count<input name="n" type="number" min="0" step="1" value="${esc((cur && cur.n) || 1)}"></label>`, (f) => {
         const kind = f.kind.value, step = [];
         let prop;
         if (NEEDS_PROP.has(kind)) {
           prop = f.prop.value;
+          const name = f.plabel.value.trim();
           if (prop === "__new") {
-            const name = f.newprop.value.trim();
             if (!name) return;
             prop = Object.keys(props).find((iri) => props[iri] === name || local(iri) === name);
             if (!prop) { prop = mint(name, true); step.push({ op: "add_property", iri: prop, label: name }); }
-          } else if (std.has(prop)) {
-            step.push({ op: "add_property", iri: prop, label: std.get(prop) });
+          } else if (std.has(prop)) {   // declare it, under the user's label if they gave one
+            step.push({ op: "add_property", iri: prop, label: name || std.get(prop) });
+          } else if (name && name !== props[prop]) {
+            step.push({ op: "rename", iri: prop, label: name });
           }
         }
         let op = { op: "add_edge", kind, src, dst };
@@ -405,12 +407,13 @@
       const f = pop().querySelector("form");
       const sync = () => {
         f.querySelector(".propRow").hidden = !NEEDS_PROP.has(f.kind.value);
-        f.querySelector(".newRow").hidden = !NEEDS_PROP.has(f.kind.value) || f.prop.value !== "__new";
+        f.querySelector(".newRow").hidden = !NEEDS_PROP.has(f.kind.value);
         f.querySelector(".nRow").hidden = !CARDS.has(f.kind.value);
       };
       f.kind.addEventListener("change", sync);
-      f.prop.addEventListener("change", () => { sync(); if (f.prop.value === "__new") f.newprop.focus(); });
-      sync();
+      const fill = () => { const v = f.prop.value; f.plabel.value = v === "__new" ? "" : props[v] || std.get(v) || ""; };
+      f.prop.addEventListener("change", () => { fill(); sync(); if (f.prop.value === "__new") f.plabel.focus(); });
+      fill(); sync();
     }
     function newEdgePopover(ev, src, dst) { relationPopover(ev, src, dst, null, push); }
     // Change what an existing line means: delete its axiom, add the new one, as one step.

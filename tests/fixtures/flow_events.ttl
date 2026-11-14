@@ -1,0 +1,949 @@
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix p2p: <http://example.org/p2p/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+p2p:C1041_8 a p2p:PaymentRelease ;
+    rdfs:label "C-1041 release payment" ;
+    p2p:inCase p2p:C1041 ;
+    p2p:occurredOn "2026-09-30"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1041_7 .
+
+p2p:C1042_9 a p2p:PaymentRelease ;
+    rdfs:label "C-1042 release payment" ;
+    p2p:inCase p2p:C1042 ;
+    p2p:occurredOn "2026-10-14"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1042_8 .
+
+p2p:C1043_8 a p2p:PaymentRelease ;
+    rdfs:label "C-1043 release payment" ;
+    p2p:inCase p2p:C1043 ;
+    p2p:occurredOn "2026-10-06"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1043_7 .
+
+p2p:C1044_9 a p2p:PaymentRelease ;
+    rdfs:label "C-1044 release payment" ;
+    p2p:inCase p2p:C1044 ;
+    p2p:occurredOn "2026-10-30"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1044_8 .
+
+p2p:C1045_8 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1045 three-way match" ;
+    p2p:inCase p2p:C1045 ;
+    p2p:occurredOn "2026-09-29"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1045_7 .
+
+p2p:C1046_8 a p2p:PaymentRelease ;
+    rdfs:label "C-1046 release payment" ;
+    p2p:inCase p2p:C1046 ;
+    p2p:occurredOn "2026-10-10"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1046_7 .
+
+p2p:C1047_8 a p2p:PaymentRelease ;
+    rdfs:label "C-1047 release payment" ;
+    p2p:inCase p2p:C1047 ;
+    p2p:occurredOn "2026-11-09"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1047_7 .
+
+p2p:C1048_10 a p2p:PaymentRelease ;
+    rdfs:label "C-1048 release payment" ;
+    p2p:inCase p2p:C1048 ;
+    p2p:occurredOn "2026-11-06"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1048_9 .
+
+p2p:C1049_8 a p2p:PaymentRelease ;
+    rdfs:label "C-1049 release payment" ;
+    p2p:inCase p2p:C1049 ;
+    p2p:occurredOn "2026-10-20"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1049_7 .
+
+p2p:C1050_9 a p2p:PaymentRelease ;
+    rdfs:label "C-1050 release payment" ;
+    p2p:inCase p2p:C1050 ;
+    p2p:occurredOn "2026-11-02"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1050_8 .
+
+p2p:C1051_8 a p2p:PaymentRelease ;
+    rdfs:label "C-1051 release payment" ;
+    p2p:inCase p2p:C1051 ;
+    p2p:occurredOn "2026-11-04"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1051_7 .
+
+p2p:C1052_8 a p2p:PaymentRelease ;
+    rdfs:label "C-1052 release payment" ;
+    p2p:inCase p2p:C1052 ;
+    p2p:occurredOn "2026-11-10"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1052_7 .
+
+p2p:C1053_8 a p2p:PaymentRelease ;
+    rdfs:label "C-1053 release payment" ;
+    p2p:inCase p2p:C1053 ;
+    p2p:occurredOn "2026-11-10"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1053_7 .
+
+p2p:C1054_7 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1054 three-way match" ;
+    p2p:inCase p2p:C1054 ;
+    p2p:occurredOn "2026-11-02"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1054_6 .
+
+p2p:C1055_9 a p2p:PaymentRelease ;
+    rdfs:label "C-1055 release payment" ;
+    p2p:inCase p2p:C1055 ;
+    p2p:occurredOn "2026-11-11"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1055_8 .
+
+p2p:C1041_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1041 raise request" ;
+    p2p:inCase p2p:C1041 ;
+    p2p:occurredOn "2026-09-02"^^xsd:date ;
+    obo:RO_0000057 p2p:person_AChen .
+
+p2p:C1041_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1041 budget check" ;
+    p2p:inCase p2p:C1041 ;
+    p2p:occurredOn "2026-09-03"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1041_1 .
+
+p2p:C1041_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1041 manager approval" ;
+    p2p:inCase p2p:C1041 ;
+    p2p:occurredOn "2026-09-03"^^xsd:date ;
+    obo:RO_0000057 p2p:person_MOrtiz ;
+    obo:RO_0002087 p2p:C1041_2 .
+
+p2p:C1041_4 a p2p:POIssue ;
+    rdfs:label "C-1041 issue purchase order" ;
+    p2p:forAmount 3200.0 ;
+    p2p:inCase p2p:C1041 ;
+    p2p:occurredOn "2026-09-04"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1041_3 .
+
+p2p:C1041_5 a p2p:GoodsReceipt ;
+    rdfs:label "C-1041 receive goods" ;
+    p2p:inCase p2p:C1041 ;
+    p2p:occurredOn "2026-09-11"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1041_4 .
+
+p2p:C1041_6 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1041 invoice received" ;
+    p2p:inCase p2p:C1041 ;
+    p2p:occurredOn "2026-09-12"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1041_5 .
+
+p2p:C1041_7 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1041 three-way match" ;
+    p2p:inCase p2p:C1041 ;
+    p2p:occurredOn "2026-09-13"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1041_6 .
+
+p2p:C1042_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1042 raise request" ;
+    p2p:inCase p2p:C1042 ;
+    p2p:occurredOn "2026-09-03"^^xsd:date ;
+    obo:RO_0000057 p2p:person_BOkafor .
+
+p2p:C1042_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1042 budget check" ;
+    p2p:inCase p2p:C1042 ;
+    p2p:occurredOn "2026-09-04"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1042_1 .
+
+p2p:C1042_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1042 manager approval" ;
+    p2p:inCase p2p:C1042 ;
+    p2p:occurredOn "2026-09-05"^^xsd:date ;
+    obo:RO_0000057 p2p:person_KLiu ;
+    obo:RO_0002087 p2p:C1042_2 .
+
+p2p:C1042_4 a p2p:DirectorApproval ;
+    rdfs:label "C-1042 director approval" ;
+    p2p:inCase p2p:C1042 ;
+    p2p:occurredOn "2026-09-08"^^xsd:date ;
+    obo:RO_0000057 p2p:person_SHaddad ;
+    obo:RO_0002087 p2p:C1042_3 .
+
+p2p:C1042_5 a p2p:POIssue ;
+    rdfs:label "C-1042 issue purchase order" ;
+    p2p:forAmount 18500.0 ;
+    p2p:inCase p2p:C1042 ;
+    p2p:occurredOn "2026-09-09"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1042_4 .
+
+p2p:C1042_6 a p2p:GoodsReceipt ;
+    rdfs:label "C-1042 receive goods" ;
+    p2p:inCase p2p:C1042 ;
+    p2p:occurredOn "2026-09-22"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1042_5 .
+
+p2p:C1042_7 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1042 invoice received" ;
+    p2p:inCase p2p:C1042 ;
+    p2p:occurredOn "2026-09-23"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1042_6 .
+
+p2p:C1042_8 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1042 three-way match" ;
+    p2p:inCase p2p:C1042 ;
+    p2p:occurredOn "2026-09-24"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1042_7 .
+
+p2p:C1043_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1043 raise request" ;
+    p2p:inCase p2p:C1043 ;
+    p2p:occurredOn "2026-09-08"^^xsd:date ;
+    obo:RO_0000057 p2p:person_RPatel .
+
+p2p:C1043_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1043 budget check" ;
+    p2p:inCase p2p:C1043 ;
+    p2p:occurredOn "2026-09-09"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1043_1 .
+
+p2p:C1043_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1043 manager approval" ;
+    p2p:inCase p2p:C1043 ;
+    p2p:occurredOn "2026-09-09"^^xsd:date ;
+    obo:RO_0000057 p2p:person_MOrtiz ;
+    obo:RO_0002087 p2p:C1043_2 .
+
+p2p:C1043_4 a p2p:POIssue ;
+    rdfs:label "C-1043 issue purchase order" ;
+    p2p:forAmount 14200.0 ;
+    p2p:inCase p2p:C1043 ;
+    p2p:occurredOn "2026-09-10"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1043_3 .
+
+p2p:C1043_5 a p2p:GoodsReceipt ;
+    rdfs:label "C-1043 receive goods" ;
+    p2p:inCase p2p:C1043 ;
+    p2p:occurredOn "2026-09-15"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1043_4 .
+
+p2p:C1043_6 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1043 invoice received" ;
+    p2p:inCase p2p:C1043 ;
+    p2p:occurredOn "2026-09-16"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1043_5 .
+
+p2p:C1043_7 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1043 three-way match" ;
+    p2p:inCase p2p:C1043 ;
+    p2p:occurredOn "2026-09-17"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1043_6 .
+
+p2p:C1044_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1044 raise request" ;
+    p2p:inCase p2p:C1044 ;
+    p2p:occurredOn "2026-09-10"^^xsd:date ;
+    obo:RO_0000057 p2p:person_AChen .
+
+p2p:C1044_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1044 budget check" ;
+    p2p:inCase p2p:C1044 ;
+    p2p:occurredOn "2026-09-11"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1044_1 .
+
+p2p:C1044_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1044 manager approval" ;
+    p2p:inCase p2p:C1044 ;
+    p2p:occurredOn "2026-09-12"^^xsd:date ;
+    obo:RO_0000057 p2p:person_MOrtiz ;
+    obo:RO_0002087 p2p:C1044_2 .
+
+p2p:C1044_4 a p2p:DirectorApproval ;
+    rdfs:label "C-1044 director approval" ;
+    p2p:inCase p2p:C1044 ;
+    p2p:occurredOn "2026-09-15"^^xsd:date ;
+    obo:RO_0000057 p2p:person_SHaddad ;
+    obo:RO_0002087 p2p:C1044_3 .
+
+p2p:C1044_5 a p2p:POIssue ;
+    rdfs:label "C-1044 issue purchase order" ;
+    p2p:forAmount 41000.0 ;
+    p2p:inCase p2p:C1044 ;
+    p2p:occurredOn "2026-09-16"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1044_4 .
+
+p2p:C1044_6 a p2p:GoodsReceipt ;
+    rdfs:label "C-1044 receive goods" ;
+    p2p:inCase p2p:C1044 ;
+    p2p:occurredOn "2026-10-07"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1044_5 .
+
+p2p:C1044_7 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1044 invoice received" ;
+    p2p:inCase p2p:C1044 ;
+    p2p:occurredOn "2026-10-08"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1044_6 .
+
+p2p:C1044_8 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1044 three-way match" ;
+    p2p:inCase p2p:C1044 ;
+    p2p:occurredOn "2026-10-09"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1044_7 .
+
+p2p:C1045_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1045 raise request" ;
+    p2p:inCase p2p:C1045 ;
+    p2p:occurredOn "2026-09-14"^^xsd:date ;
+    obo:RO_0000057 p2p:person_BOkafor .
+
+p2p:C1045_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1045 budget check" ;
+    p2p:inCase p2p:C1045 ;
+    p2p:occurredOn "2026-09-15"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1045_1 .
+
+p2p:C1045_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1045 manager approval" ;
+    p2p:inCase p2p:C1045 ;
+    p2p:occurredOn "2026-09-15"^^xsd:date ;
+    obo:RO_0000057 p2p:person_KLiu ;
+    obo:RO_0002087 p2p:C1045_2 .
+
+p2p:C1045_4 a p2p:POIssue ;
+    rdfs:label "C-1045 issue purchase order" ;
+    p2p:forAmount 6800.0 ;
+    p2p:inCase p2p:C1045 ;
+    p2p:occurredOn "2026-09-16"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1045_3 .
+
+p2p:C1045_5 a p2p:GoodsReceipt ;
+    rdfs:label "C-1045 receive goods" ;
+    p2p:inCase p2p:C1045 ;
+    p2p:occurredOn "2026-09-19"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1045_4 .
+
+p2p:C1045_6 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1045 invoice received" ;
+    p2p:inCase p2p:C1045 ;
+    p2p:occurredOn "2026-09-22"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1045_5 .
+
+p2p:C1045_7 a p2p:PaymentRelease ;
+    rdfs:label "C-1045 release payment" ;
+    p2p:inCase p2p:C1045 ;
+    p2p:occurredOn "2026-09-24"^^xsd:date ;
+    obo:RO_0000057 p2p:person_ERomero ;
+    obo:RO_0002087 p2p:C1045_6 .
+
+p2p:C1046_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1046 raise request" ;
+    p2p:inCase p2p:C1046 ;
+    p2p:occurredOn "2026-09-17"^^xsd:date ;
+    obo:RO_0000057 p2p:person_KLiu .
+
+p2p:C1046_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1046 budget check" ;
+    p2p:inCase p2p:C1046 ;
+    p2p:occurredOn "2026-09-17"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1046_1 .
+
+p2p:C1046_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1046 manager approval" ;
+    p2p:inCase p2p:C1046 ;
+    p2p:occurredOn "2026-09-18"^^xsd:date ;
+    obo:RO_0000057 p2p:person_KLiu ;
+    obo:RO_0002087 p2p:C1046_2 .
+
+p2p:C1046_4 a p2p:POIssue ;
+    rdfs:label "C-1046 issue purchase order" ;
+    p2p:forAmount 2150.0 ;
+    p2p:inCase p2p:C1046 ;
+    p2p:occurredOn "2026-09-18"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1046_3 .
+
+p2p:C1046_5 a p2p:GoodsReceipt ;
+    rdfs:label "C-1046 receive goods" ;
+    p2p:inCase p2p:C1046 ;
+    p2p:occurredOn "2026-09-25"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1046_4 .
+
+p2p:C1046_6 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1046 invoice received" ;
+    p2p:inCase p2p:C1046 ;
+    p2p:occurredOn "2026-09-26"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1046_5 .
+
+p2p:C1046_7 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1046 three-way match" ;
+    p2p:inCase p2p:C1046 ;
+    p2p:occurredOn "2026-09-27"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1046_6 .
+
+p2p:C1047_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1047 raise request" ;
+    p2p:inCase p2p:C1047 ;
+    p2p:occurredOn "2026-09-21"^^xsd:date ;
+    obo:RO_0000057 p2p:person_LMoreno .
+
+p2p:C1047_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1047 budget check" ;
+    p2p:inCase p2p:C1047 ;
+    p2p:occurredOn "2026-09-22"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1047_1 .
+
+p2p:C1047_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1047 manager approval" ;
+    p2p:inCase p2p:C1047 ;
+    p2p:occurredOn "2026-09-22"^^xsd:date ;
+    obo:RO_0000057 p2p:person_MOrtiz ;
+    obo:RO_0002087 p2p:C1047_2 .
+
+p2p:C1047_4 a p2p:POIssue ;
+    rdfs:label "C-1047 issue purchase order" ;
+    p2p:forAmount 9900.0 ;
+    p2p:inCase p2p:C1047 ;
+    p2p:occurredOn "2026-09-23"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1047_3 .
+
+p2p:C1047_5 a p2p:GoodsReceipt ;
+    rdfs:label "C-1047 receive goods" ;
+    p2p:inCase p2p:C1047 ;
+    p2p:occurredOn "2026-09-30"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1047_4 .
+
+p2p:C1047_6 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1047 invoice received" ;
+    p2p:inCase p2p:C1047 ;
+    p2p:occurredOn "2026-10-01"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1047_5 .
+
+p2p:C1047_7 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1047 three-way match" ;
+    p2p:inCase p2p:C1047 ;
+    p2p:occurredOn "2026-10-02"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1047_6 .
+
+p2p:C1048_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1048 raise request" ;
+    p2p:inCase p2p:C1048 ;
+    p2p:occurredOn "2026-09-24"^^xsd:date ;
+    obo:RO_0000057 p2p:person_RPatel .
+
+p2p:C1048_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1048 budget check" ;
+    p2p:inCase p2p:C1048 ;
+    p2p:occurredOn "2026-09-25"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1048_1 .
+
+p2p:C1048_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1048 manager approval" ;
+    p2p:inCase p2p:C1048 ;
+    p2p:occurredOn "2026-09-25"^^xsd:date ;
+    obo:RO_0000057 p2p:person_KLiu ;
+    obo:RO_0002087 p2p:C1048_2 .
+
+p2p:C1048_4 a p2p:DirectorApproval ;
+    rdfs:label "C-1048 director approval" ;
+    p2p:inCase p2p:C1048 ;
+    p2p:occurredOn "2026-09-29"^^xsd:date ;
+    obo:RO_0000057 p2p:person_SHaddad ;
+    obo:RO_0002087 p2p:C1048_3 .
+
+p2p:C1048_5 a p2p:QuoteCollection ;
+    rdfs:label "C-1048 collect three quotes" ;
+    p2p:inCase p2p:C1048 ;
+    p2p:occurredOn "2026-10-02"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1048_4 .
+
+p2p:C1048_6 a p2p:POIssue ;
+    rdfs:label "C-1048 issue purchase order" ;
+    p2p:forAmount 27500.0 ;
+    p2p:inCase p2p:C1048 ;
+    p2p:occurredOn "2026-10-03"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1048_5 .
+
+p2p:C1048_7 a p2p:GoodsReceipt ;
+    rdfs:label "C-1048 receive goods" ;
+    p2p:inCase p2p:C1048 ;
+    p2p:occurredOn "2026-10-16"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1048_6 .
+
+p2p:C1048_8 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1048 invoice received" ;
+    p2p:inCase p2p:C1048 ;
+    p2p:occurredOn "2026-10-17"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1048_7 .
+
+p2p:C1048_9 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1048 three-way match" ;
+    p2p:inCase p2p:C1048 ;
+    p2p:occurredOn "2026-10-20"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1048_8 .
+
+p2p:C1049_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1049 raise request" ;
+    p2p:inCase p2p:C1049 ;
+    p2p:occurredOn "2026-09-28"^^xsd:date ;
+    obo:RO_0000057 p2p:person_AChen .
+
+p2p:C1049_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1049 budget check" ;
+    p2p:inCase p2p:C1049 ;
+    p2p:occurredOn "2026-09-29"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1049_1 .
+
+p2p:C1049_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1049 manager approval" ;
+    p2p:inCase p2p:C1049 ;
+    p2p:occurredOn "2026-09-29"^^xsd:date ;
+    obo:RO_0000057 p2p:person_MOrtiz ;
+    obo:RO_0002087 p2p:C1049_2 .
+
+p2p:C1049_4 a p2p:GoodsReceipt ;
+    rdfs:label "C-1049 receive goods" ;
+    p2p:inCase p2p:C1049 ;
+    p2p:occurredOn "2026-10-02"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1049_3 .
+
+p2p:C1049_5 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1049 invoice received" ;
+    p2p:inCase p2p:C1049 ;
+    p2p:occurredOn "2026-10-03"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1049_4 .
+
+p2p:C1049_6 a p2p:POIssue ;
+    rdfs:label "C-1049 issue purchase order" ;
+    p2p:forAmount 1300.0 ;
+    p2p:inCase p2p:C1049 ;
+    p2p:occurredOn "2026-10-06"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1049_5 .
+
+p2p:C1049_7 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1049 three-way match" ;
+    p2p:inCase p2p:C1049 ;
+    p2p:occurredOn "2026-10-07"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1049_6 .
+
+p2p:C1050_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1050 raise request" ;
+    p2p:inCase p2p:C1050 ;
+    p2p:occurredOn "2026-10-01"^^xsd:date ;
+    obo:RO_0000057 p2p:person_BOkafor .
+
+p2p:C1050_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1050 budget check" ;
+    p2p:inCase p2p:C1050 ;
+    p2p:occurredOn "2026-10-02"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1050_1 .
+
+p2p:C1050_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1050 manager approval" ;
+    p2p:inCase p2p:C1050 ;
+    p2p:occurredOn "2026-10-02"^^xsd:date ;
+    obo:RO_0000057 p2p:person_KLiu ;
+    obo:RO_0002087 p2p:C1050_2 .
+
+p2p:C1050_4 a p2p:DirectorApproval ;
+    rdfs:label "C-1050 director approval" ;
+    p2p:inCase p2p:C1050 ;
+    p2p:occurredOn "2026-10-05"^^xsd:date ;
+    obo:RO_0000057 p2p:person_SHaddad ;
+    obo:RO_0002087 p2p:C1050_3 .
+
+p2p:C1050_5 a p2p:POIssue ;
+    rdfs:label "C-1050 issue purchase order" ;
+    p2p:forAmount 12000.0 ;
+    p2p:inCase p2p:C1050 ;
+    p2p:occurredOn "2026-10-06"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1050_4 .
+
+p2p:C1050_6 a p2p:GoodsReceipt ;
+    rdfs:label "C-1050 receive goods" ;
+    p2p:inCase p2p:C1050 ;
+    p2p:occurredOn "2026-10-14"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1050_5 .
+
+p2p:C1050_7 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1050 invoice received" ;
+    p2p:inCase p2p:C1050 ;
+    p2p:occurredOn "2026-10-15"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1050_6 .
+
+p2p:C1050_8 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1050 three-way match" ;
+    p2p:inCase p2p:C1050 ;
+    p2p:occurredOn "2026-10-16"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1050_7 .
+
+p2p:C1051_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1051 raise request" ;
+    p2p:inCase p2p:C1051 ;
+    p2p:occurredOn "2026-10-05"^^xsd:date ;
+    obo:RO_0000057 p2p:person_RPatel .
+
+p2p:C1051_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1051 budget check" ;
+    p2p:inCase p2p:C1051 ;
+    p2p:occurredOn "2026-10-06"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1051_1 .
+
+p2p:C1051_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1051 manager approval" ;
+    p2p:inCase p2p:C1051 ;
+    p2p:occurredOn "2026-10-06"^^xsd:date ;
+    obo:RO_0000057 p2p:person_MOrtiz ;
+    obo:RO_0002087 p2p:C1051_2 .
+
+p2p:C1051_4 a p2p:POIssue ;
+    rdfs:label "C-1051 issue purchase order" ;
+    p2p:forAmount 4400.0 ;
+    p2p:inCase p2p:C1051 ;
+    p2p:occurredOn "2026-10-07"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1051_3 .
+
+p2p:C1051_5 a p2p:GoodsReceipt ;
+    rdfs:label "C-1051 receive goods" ;
+    p2p:inCase p2p:C1051 ;
+    p2p:occurredOn "2026-10-13"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1051_4 .
+
+p2p:C1051_6 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1051 invoice received" ;
+    p2p:inCase p2p:C1051 ;
+    p2p:occurredOn "2026-10-14"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1051_5 .
+
+p2p:C1051_7 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1051 three-way match" ;
+    p2p:inCase p2p:C1051 ;
+    p2p:occurredOn "2026-10-15"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1051_6 .
+
+p2p:C1052_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1052 raise request" ;
+    p2p:inCase p2p:C1052 ;
+    p2p:occurredOn "2026-10-08"^^xsd:date ;
+    obo:RO_0000057 p2p:person_LMoreno .
+
+p2p:C1052_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1052 budget check" ;
+    p2p:inCase p2p:C1052 ;
+    p2p:occurredOn "2026-10-09"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1052_1 .
+
+p2p:C1052_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1052 manager approval" ;
+    p2p:inCase p2p:C1052 ;
+    p2p:occurredOn "2026-10-09"^^xsd:date ;
+    obo:RO_0000057 p2p:person_MOrtiz ;
+    obo:RO_0002087 p2p:C1052_2 .
+
+p2p:C1052_4 a p2p:POIssue ;
+    rdfs:label "C-1052 issue purchase order" ;
+    p2p:forAmount 8000.0 ;
+    p2p:inCase p2p:C1052 ;
+    p2p:occurredOn "2026-10-10"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1052_3 .
+
+p2p:C1052_5 a p2p:GoodsReceipt ;
+    rdfs:label "C-1052 receive goods" ;
+    p2p:inCase p2p:C1052 ;
+    p2p:occurredOn "2026-10-20"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1052_4 .
+
+p2p:C1052_6 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1052 invoice received" ;
+    p2p:inCase p2p:C1052 ;
+    p2p:occurredOn "2026-10-21"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1052_5 .
+
+p2p:C1052_7 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1052 three-way match" ;
+    p2p:inCase p2p:C1052 ;
+    p2p:occurredOn "2026-10-22"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1052_6 .
+
+p2p:C1053_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1053 raise request" ;
+    p2p:inCase p2p:C1053 ;
+    p2p:occurredOn "2026-10-10"^^xsd:date ;
+    obo:RO_0000057 p2p:person_LMoreno .
+
+p2p:C1053_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1053 budget check" ;
+    p2p:inCase p2p:C1053 ;
+    p2p:occurredOn "2026-10-10"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1053_1 .
+
+p2p:C1053_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1053 manager approval" ;
+    p2p:inCase p2p:C1053 ;
+    p2p:occurredOn "2026-10-12"^^xsd:date ;
+    obo:RO_0000057 p2p:person_MOrtiz ;
+    obo:RO_0002087 p2p:C1053_2 .
+
+p2p:C1053_4 a p2p:POIssue ;
+    rdfs:label "C-1053 issue purchase order" ;
+    p2p:forAmount 7500.0 ;
+    p2p:inCase p2p:C1053 ;
+    p2p:occurredOn "2026-10-13"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1053_3 .
+
+p2p:C1053_5 a p2p:GoodsReceipt ;
+    rdfs:label "C-1053 receive goods" ;
+    p2p:inCase p2p:C1053 ;
+    p2p:occurredOn "2026-10-20"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1053_4 .
+
+p2p:C1053_6 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1053 invoice received" ;
+    p2p:inCase p2p:C1053 ;
+    p2p:occurredOn "2026-10-21"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1053_5 .
+
+p2p:C1053_7 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1053 three-way match" ;
+    p2p:inCase p2p:C1053 ;
+    p2p:occurredOn "2026-10-22"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1053_6 .
+
+p2p:C1054_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1054 raise request" ;
+    p2p:inCase p2p:C1054 ;
+    p2p:occurredOn "2026-10-20"^^xsd:date ;
+    obo:RO_0000057 p2p:person_AChen .
+
+p2p:C1054_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1054 budget check" ;
+    p2p:inCase p2p:C1054 ;
+    p2p:occurredOn "2026-10-21"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1054_1 .
+
+p2p:C1054_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1054 manager approval" ;
+    p2p:inCase p2p:C1054 ;
+    p2p:occurredOn "2026-10-21"^^xsd:date ;
+    obo:RO_0000057 p2p:person_KLiu ;
+    obo:RO_0002087 p2p:C1054_2 .
+
+p2p:C1054_4 a p2p:POIssue ;
+    rdfs:label "C-1054 issue purchase order" ;
+    p2p:forAmount 5600.0 ;
+    p2p:inCase p2p:C1054 ;
+    p2p:occurredOn "2026-10-22"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1054_3 .
+
+p2p:C1054_5 a p2p:GoodsReceipt ;
+    rdfs:label "C-1054 receive goods" ;
+    p2p:inCase p2p:C1054 ;
+    p2p:occurredOn "2026-10-29"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1054_4 .
+
+p2p:C1054_6 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1054 invoice received" ;
+    p2p:inCase p2p:C1054 ;
+    p2p:occurredOn "2026-10-30"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1054_5 .
+
+p2p:C1055_1 a p2p:PurchaseRequest ;
+    rdfs:label "C-1055 raise request" ;
+    p2p:inCase p2p:C1055 ;
+    p2p:occurredOn "2026-10-14"^^xsd:date ;
+    obo:RO_0000057 p2p:person_BOkafor .
+
+p2p:C1055_2 a p2p:BudgetCheck ;
+    rdfs:label "C-1055 budget check" ;
+    p2p:inCase p2p:C1055 ;
+    p2p:occurredOn "2026-10-15"^^xsd:date ;
+    obo:RO_0000057 p2p:person_FDuarte ;
+    obo:RO_0002087 p2p:C1055_1 .
+
+p2p:C1055_3 a p2p:ManagerApproval ;
+    rdfs:label "C-1055 manager approval" ;
+    p2p:inCase p2p:C1055 ;
+    p2p:occurredOn "2026-10-15"^^xsd:date ;
+    obo:RO_0000057 p2p:person_MOrtiz ;
+    obo:RO_0002087 p2p:C1055_2 .
+
+p2p:C1055_4 a p2p:DirectorApproval ;
+    rdfs:label "C-1055 director approval" ;
+    p2p:inCase p2p:C1055 ;
+    p2p:occurredOn "2026-10-19"^^xsd:date ;
+    obo:RO_0000057 p2p:person_SHaddad ;
+    obo:RO_0002087 p2p:C1055_3 .
+
+p2p:C1055_5 a p2p:POIssue ;
+    rdfs:label "C-1055 issue purchase order" ;
+    p2p:forAmount 22000.0 ;
+    p2p:inCase p2p:C1055 ;
+    p2p:occurredOn "2026-10-20"^^xsd:date ;
+    obo:RO_0000057 p2p:person_JNovak ;
+    obo:RO_0002087 p2p:C1055_4 .
+
+p2p:C1055_6 a p2p:GoodsReceipt ;
+    rdfs:label "C-1055 receive goods" ;
+    p2p:inCase p2p:C1055 ;
+    p2p:occurredOn "2026-10-28"^^xsd:date ;
+    obo:RO_0000057 p2p:person_TBrooks ;
+    obo:RO_0002087 p2p:C1055_5 .
+
+p2p:C1055_7 a p2p:InvoiceReceipt ;
+    rdfs:label "C-1055 invoice received" ;
+    p2p:inCase p2p:C1055 ;
+    p2p:occurredOn "2026-10-29"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1055_6 .
+
+p2p:C1055_8 a p2p:ThreeWayMatch ;
+    rdfs:label "C-1055 three-way match" ;
+    p2p:inCase p2p:C1055 ;
+    p2p:occurredOn "2026-10-30"^^xsd:date ;
+    obo:RO_0000057 p2p:person_PSingh ;
+    obo:RO_0002087 p2p:C1055_7 .
+
+p2p:person_LMoreno rdfs:label "L. Moreno" .
+
+p2p:person_RPatel rdfs:label "R. Patel" .
+
+p2p:person_AChen rdfs:label "A. Chen" .
+
+p2p:person_BOkafor rdfs:label "B. Okafor" .
+
+p2p:person_SHaddad rdfs:label "S. Haddad" .
+
+p2p:C1054 rdfs:label "C-1054" ;
+    p2p:forAmount 5600.0 .
+
+p2p:person_KLiu rdfs:label "K. Liu" .
+
+p2p:C1041 rdfs:label "C-1041" ;
+    p2p:forAmount 3200.0 .
+
+p2p:C1043 rdfs:label "C-1043" ;
+    p2p:forAmount 14200.0 .
+
+p2p:C1045 rdfs:label "C-1045" ;
+    p2p:forAmount 6800.0 .
+
+p2p:C1046 rdfs:label "C-1046" ;
+    p2p:forAmount 2150.0 .
+
+p2p:C1047 rdfs:label "C-1047" ;
+    p2p:forAmount 9900.0 .
+
+p2p:C1049 rdfs:label "C-1049" ;
+    p2p:forAmount 1300.0 .
+
+p2p:C1051 rdfs:label "C-1051" ;
+    p2p:forAmount 4400.0 .
+
+p2p:C1052 rdfs:label "C-1052" ;
+    p2p:forAmount 8000.0 .
+
+p2p:C1053 rdfs:label "C-1053" ;
+    p2p:forAmount 7500.0 .
+
+p2p:C1042 rdfs:label "C-1042" ;
+    p2p:forAmount 18500.0 .
+
+p2p:C1044 rdfs:label "C-1044" ;
+    p2p:forAmount 41000.0 .
+
+p2p:C1050 rdfs:label "C-1050" ;
+    p2p:forAmount 12000.0 .
+
+p2p:C1055 rdfs:label "C-1055" ;
+    p2p:forAmount 22000.0 .
+
+p2p:person_MOrtiz rdfs:label "M. Ortiz" .
+
+p2p:C1048 rdfs:label "C-1048" ;
+    p2p:forAmount 27500.0 .
+
+p2p:person_ERomero rdfs:label "E. Romero" .
+
+p2p:person_FDuarte rdfs:label "F. Duarte" .
+
+p2p:person_TBrooks rdfs:label "T. Brooks" .
+
+p2p:person_JNovak rdfs:label "J. Novak" .
+
+p2p:person_PSingh rdfs:label "P. Singh" .
+

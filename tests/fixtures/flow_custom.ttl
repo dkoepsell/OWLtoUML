@@ -1,0 +1,26 @@
+@prefix :     <http://example.org/kitchen/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# A process in a house vocabulary, mapped with flow_custom_map.json:
+# :next is an immediate sequence relation, :doneBy puts a step in a lane.
+<http://example.org/kitchen/flow.owl> a owl:Ontology .
+:next a owl:ObjectProperty ; rdfs:label "next" .
+:doneBy a owl:ObjectProperty ; rdfs:label "done by" .
+:Cook a owl:Class ; rdfs:label "cook" .
+:Waiter a owl:Class ; rdfs:label "waiter" .
+:TakeOrder a owl:Class ; rdfs:label "take order" ; rdfs:subClassOf
+    [ a owl:Restriction ; owl:onProperty :next ; owl:someValuesFrom :Prepare ] ,
+    [ a owl:Restriction ; owl:onProperty :doneBy ; owl:someValuesFrom :Waiter ] .
+:Prepare a owl:Class ; rdfs:label "prepare dish" ; rdfs:subClassOf
+    [ a owl:Restriction ; owl:onProperty :next ; owl:someValuesFrom :Serve ] ,
+    [ a owl:Restriction ; owl:onProperty :doneBy ; owl:someValuesFrom :Cook ] .
+:Serve a owl:Class ; rdfs:label "serve" ; rdfs:subClassOf
+    [ a owl:Restriction ; owl:onProperty :doneBy ; owl:someValuesFrom :Waiter ] .
+
+# Two logged orders; the second skipped preparation.
+:o1a a :TakeOrder ; rdfs:label "order 1 taken" ; :next :o1b .
+:o1b a :Prepare ; rdfs:label "order 1 prepared" ; :next :o1c .
+:o1c a :Serve ; rdfs:label "order 1 served" .
+:o2a a :TakeOrder ; rdfs:label "order 2 taken" ; :next :o2c .
+:o2c a :Serve ; rdfs:label "order 2 served" .

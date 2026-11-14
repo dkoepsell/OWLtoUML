@@ -205,6 +205,50 @@
         Description</em>. W3C Member Submission.</li>
     </ul>
 
+    <h3>Flow view: processes as processes</h3>
+    <p>
+      The class view shows what kind of thing each class is. For an ontology of
+      processes, the <strong>Flow</strong> view (CLI: <code>--flow</code>) reads
+      the same axioms as a process: a restriction on a <em>sequence</em>
+      relation (<code>'issue PO' SubClassOf 'immediately preceded by' some
+      'manager approval'</code>) becomes an arrow; on a non-immediate one
+      (<em>preceded by</em>) a dashed blue <em>rule</em> that something must come
+      first; a restriction on <em>realizes</em> or <em>has participant</em> puts
+      the step in that role's swimlane; and a defined subclass of a step that
+      adds a condition and its own sequence restriction becomes a conditional
+      rule, labelled with the condition (<em>if for amount &gt; 10,000</em>).
+      Which relations count is configurable (<code>--flow-map</code>, a small
+      JSON file); the defaults are BFO 2020's <em>precedes</em> and
+      <em>preceded by</em> and the Relation Ontology's immediate forms, and
+      sub-properties of a mapped relation count too.
+    </p>
+    <p>
+      With an <strong>event log</strong> (<code>--events</code>: instances of the
+      steps, linked by the immediate sequence relations) the view shows the flow
+      <em>as practiced</em>: line width is the number of cases that took a path,
+      and paths no axiom allows are drawn in orange. Cases are the connected
+      chains of events, named by a value all their events share. Choose a case
+      to trace its path; <kbd>p</kbd> switches to the design alone. With
+      <strong>rules</strong> (<code>--shapes</code>, SHACL), each violation is
+      pinned to the step its focus node instantiates. The axioms are read
+      open-world (a missing predecessor is assumed to exist somewhere); the shapes
+      check the log closed-world, which is what an audit needs.
+    </p>
+    <p>
+      Layout: Graphviz <code>dot</code> orders the steps left to right along the
+      designed sequence; each lane is a horizontal band, steps of one lane that
+      would overlap take sub-rows, and <code>neato</code> routes the lines on
+      those fixed positions.
+    </p>
+    <ul>
+      <li><strong>Arp, R., Smith, B., &amp; Spear, A. D. (2015).</strong>
+        <em>Building Ontologies with Basic Formal Ontology</em>. MIT Press.</li>
+      <li><strong>Knublauch, H., &amp; Kontokostas, D. (2017).</strong>
+        <em>Shapes Constraint Language (SHACL)</em>. W3C Recommendation.</li>
+      <li><strong>van der Aalst, W. M. P. (2016).</strong> <em>Process Mining:
+        Data Science in Action</em> (2nd ed.). Springer.</li>
+    </ul>
+
     <h2>2. Layered layout (layer assignment &amp; Graphviz <code>dot</code>)</h2>
     <p>
       Each class's rank is computed as <code>1 + max(parent depths)</code> over

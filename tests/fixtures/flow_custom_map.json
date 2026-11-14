@@ -1,0 +1,2 @@
+{"sequence": {"http://example.org/kitchen/next": {"direction": "precedes", "immediate": true}},
+ "lane": ["http://example.org/kitchen/doneBy"]}

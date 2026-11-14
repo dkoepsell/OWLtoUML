@@ -5,6 +5,8 @@
  *   click it again  → quickly: widen the focus by one more hop; later: unpin
  *   click a line    → jump to the class at its far end
  *   drag a class    → move it; connected lines follow
+ *   p               → flow view: switch between the process as practiced
+ *                     (from logged events) and as designed (axioms only)
  *   s               → show/hide the source panel: the OWL a clicked class or
  *                     line was drawn from (when the SVG embeds it, see
  *                     owl2uml/source.py)
@@ -63,6 +65,13 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
   background: #e8eef7; color: #3a5a8c; font-size: 11px; cursor: pointer; }
 .o2u-ref.prop { background: #eef3ea; color: #47663a; }
 .o2u-note { font-size: 12px; color: #6b675e; }
+.o2u-ax.find { border-left: 3px solid #c2412d; font-family: Helvetica, Arial, sans-serif; }
+.o2u-ax.find .o2u-why { color: #6b675e; font-size: 11px; }
+.o2u-case { display: inline-block; margin: 2px 4px 0 0; padding: 0 7px; border-radius: 9px; background: #e8eef7;
+  color: #3a5a8c; font: 11px Menlo, Consolas, monospace; cursor: pointer; border: 0; }
+.o2u-case.on { background: #2f5fd0; color: #fff; }
+.o2u-ev { display: grid; grid-template-columns: 22px 1fr; gap: 6px; font-size: 12px; padding: 2px 0; }
+.o2u-ev i { color: #6b675e; font-style: normal; text-align: right; }
 .o2u-src-fo { overflow: visible; }
 `;
 
@@ -307,6 +316,18 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
 
     const restore = () => showNodes(pinned, hops);
 
+    // ---- flow view: one case's path, designed vs practiced -----------------
+    let caseOn = "";
+    function showCase(id) {
+      caseOn = id || "";
+      // a case's path replaces any pinned focus, which would fade parts of it
+      if (caseOn && pinned.size) { pinned = new Set(); hops = 1; restore(); }
+      svg.classList.toggle("o2u-case-on", !!caseOn);
+      svg.querySelectorAll(".o2u-on").forEach((g) => g.classList.remove("o2u-on"));
+      if (!caseOn || !source || !source.cases || !source.cases[caseOn]) return;
+      svg.querySelectorAll(".o2u-c-" + source.cases[caseOn].key).forEach((g) => g.classList.add("o2u-on"));
+    }
+
     // ---- source panel (the OWL behind a class or line) --------------------
     const source = readSource(svg);
     const nodeOf = new Map();  // class IRI -> node title
@@ -324,6 +345,7 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
             panel.showClass(iri);
             return true;
           },
+          showCase,
         });
       }
     }
@@ -345,7 +367,7 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       if (opts.onFocus) opts.onFocus([...pinned], hops);
     }
 
-    function clear() { pinned = new Set(); hops = 1; restore(); if (panel) panel.hide(); }
+    function clear() { pinned = new Set(); hops = 1; restore(); if (panel) panel.hide(); if (caseOn) showCase(""); }
 
     function navigate(g) {
       if (opts.onNavigate) return opts.onNavigate(g);
@@ -441,6 +463,8 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       if (ev.key === "Escape") clear();
       const typing = ev.target && /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName);
       if (ev.key === "s" && panel && !typing && !ev.ctrlKey && !ev.metaKey) panel.toggle();
+      if (ev.key === "p" && source && source.view === "flow" && !typing && !ev.ctrlKey && !ev.metaKey)
+        svg.classList.toggle("o2u-designed");
     }
 
     svg.addEventListener("pointerdown", onDown, true);
@@ -454,6 +478,8 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
     return {
       pin: (id) => { pinned = new Set([id]); hops = 1; restore(); if (panel) panel.showClass(source.nodes[id]); },
       panel: () => panel,
+      source: () => source,
+      showCase: (id) => { showCase(id); if (panel && id) panel.showCase(id); },
       idOf: (g) => titleOf(g),
       clear,
       reset,
@@ -609,10 +635,57 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       return "<dl>" + ent.ann.map(([n, v]) => `<dt>${esc(n)}</dt><dd>${esc(v)}</dd>`).join("") + "</dl>";
     }
 
+    const findings = src.findings || [];
+    const caseChips = (ids) => ids.length
+      ? `<div class="o2u-refs">${ids.map((c) => `<button class="o2u-case" data-case="${esc(c)}">${esc(c)}</button>`).join("")}</div>` : "";
+    const findHtml = (j) => {
+      const f = findings[j];
+      return `<div class="o2u-ax find"><b>${esc(f.rule)}</b>${esc(f.message)}` +
+        `<div class="o2u-why">${esc(f.severity)} · focus node ${esc(f.focus)}</div>${f.case ? caseChips([f.case]) : ""}</div>`;
+    };
+
+    function caseView(id) {
+      const c = src.cases && src.cases[id];
+      if (!c) return null;
+      const summary = `<p>${c.events.length} logged events, in order. Its path is highlighted on the diagram.</p>` +
+        c.events.map(([st, lab], i) => `<div class="o2u-ev"><i>${i + 1}</i><span>${esc(lbl(st))}` +
+          `<span class="o2u-note"> · ${esc(lab)}</span></span></div>`).join("") +
+        `<h4>Findings</h4>` + (c.findings.length ? c.findings.map(findHtml).join("") : '<p class="o2u-note">None.</p>');
+      return { title: id, kind: "case", summary, man: c.events.map(([st, lab], i) => `${i + 1}. ${lbl(st)}  # ${lab}`).join("\n"),
+        ttl: "# events of " + id + "\n" + c.events.map(([st, lab]) => `#   ${lab} a ${cls(st) ? cls(st).name : st}`).join("\n") };
+    }
+
+    function flowEdgeView(e) {
+      const s = esc(lbl(e.src)), d = esc(lbl(e.dst));
+      let summary;
+      if (e.kind === "sequence") {
+        summary = `<p>In the designed process <i>${d}</i> comes directly after <i>${s}</i>. Drawn from:</p><pre>${esc(e.text)}</pre>` +
+          (src.summary && src.summary.cases ? `<h4>Taken by ${e.cases.length} case${e.cases.length === 1 ? "" : "s"}</h4>${caseChips(e.cases)}` : "");
+      } else if (e.kind === "requirement") {
+        const hit = findings.map((f, j) => [f, j]).filter(([f]) => f.step === e.dst).map(([, j]) => j);
+        summary = `<p>A rule: <i>${s}</i> must come before <i>${d}</i>${e.label ? ` <b>${esc(e.label)}</b>` : ""}. Drawn from:</p>` +
+          `<pre>${esc(e.text)}</pre><p class="o2u-note">OWL reads this open-world: a missing predecessor is assumed to exist somewhere. ` +
+          "SHACL shapes check the logged cases closed-world.</p>" +
+          (hit.length ? "<h4>Findings at the step it constrains</h4>" + hit.map(findHtml).join("") : "");
+      } else {
+        const hit = findings.map((f, j) => [f, j]).filter(([f]) => e.cases.includes(f.case)).map(([, j]) => j);
+        summary = `<p>Observed, not designed: no axiom puts <i>${d}</i> directly after <i>${s}</i>, but the log does.</p>` +
+          `<pre>${esc(e.text)}</pre><h4>Cases</h4>${caseChips(e.cases)}<h4>Does it break a rule?</h4>` +
+          (hit.length ? hit.map(findHtml).join("") : `<p class="o2u-note">${src.summary && src.summary.shapes
+            ? "No shape reports a breach in these cases: a variation from the design, not a violation."
+            : "No rules (SHACL shapes) were loaded, so this is not checked."}</p>`);
+      }
+      const kind = { sequence: "designed sequence", requirement: "rule: must come first", deviation: "observed, not designed" }[e.kind];
+      return { title: `${lbl(e.src)} → ${lbl(e.dst)}`, kind, summary, man: e.text,
+        ttl: [e.src, e.dst].map((i) => (cls(i) || { ttl: "" }).ttl).join("\n\n") };
+    }
+
     function classView(iri) {
       const c = cls(iri);
       if (!c) return null;
-      const summary = annHtml(c) +
+      const fl = c.findings && c.findings.length
+        ? "<h4>Findings at this step</h4>" + c.findings.map(findHtml).join("") : "";
+      const summary = (c.lane ? `<p class="o2u-note">Lane: ${esc(c.lane)}</p>` : "") + fl + annHtml(c) +
         (c.ax.length ? "<h4>Axioms</h4>" + c.ax.map((a) => axHtml(a)).join("")
                      : '<p class="o2u-note">No logical axioms: the class is only declared here.</p>');
       return { title: c.label, kind: "class", iri: c.iri, curie: c.curie, summary, man: frame(c), ttl: c.ttl };
@@ -637,6 +710,7 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
     function edgeView(eid) {
       const e = src.edges[eid];
       if (!e) return null;
+      if (["sequence", "requirement", "deviation"].includes(e.kind)) return flowEdgeView(e);
       const s = esc(lbl(e.src)), d = esc(lbl(e.dst)), l = esc((e.label || "").replace(/\n/g, "; "));
       const title = `${lbl(e.src)} → ${lbl(e.dst)}`;
       let summary, man, ttl;
@@ -710,6 +784,13 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
         try { navigator.clipboard.writeText(text).then(done, () => {}); } catch (_) { /* no clipboard */ }
         return;
       }
+      const cs = t.closest("[data-case]");
+      if (cs) {
+        const id = cs.getAttribute("data-case");
+        if (hooks.showCase) hooks.showCase(id);
+        show(caseView(id));
+        return;
+      }
       const r = t.closest("[data-ref]");
       if (r) {
         const iri = r.getAttribute("data-ref");
@@ -734,6 +815,7 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
     return {
       showClass: (iri) => show(classView(iri)),
       showEdge: (eid) => show(edgeView(eid)),
+      showCase: (id) => show(caseView(id)),
       hide,
       toggle() {
         if (box.hidden) { wanted = true; if (view) show(view); }

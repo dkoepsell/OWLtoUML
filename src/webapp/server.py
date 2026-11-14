@@ -59,6 +59,8 @@ def render():
 
     if not data:
         return jsonify(error="no ontology provided"), 400
+    if request.form.get("view") == "flow":
+        return _render_flow(data, suffix, fmt)
 
     tmp_path = None
     try:
@@ -115,6 +117,54 @@ def render():
             for g in sorted(model.groups.values(), key=lambda g: (g.upper, g.name))
         ],
     )
+
+
+def _parse_upload(data: bytes, suffix: str, fmt=None):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, mode="wb") as tmp:
+        tmp.write(data)
+        path = tmp.name
+    try:
+        return load_graph(path, fmt=fmt)
+    finally:
+        os.unlink(path)
+
+
+def _suffix(f) -> str:
+    return "." + f.filename.rsplit(".", 1)[-1] if f.filename and "." in f.filename else ".ttl"
+
+
+def _render_flow(data: bytes, suffix: str, fmt):
+    """Flow view: the processes in swimlanes, optionally with logged events
+    ("events" files) and SHACL rules ("shapes" file) checked against them."""
+    from rdflib import Graph
+    from owl2uml.flow import extract, load_map, render_flow_svg
+    if not dot_available():
+        return jsonify(error="the flow view needs Graphviz on the server"), 500
+    try:
+        tbox = _parse_upload(data, suffix, fmt)
+        events = None
+        for f in request.files.getlist("events"):
+            events = events if events is not None else Graph()
+            events += _parse_upload(f.read(), _suffix(f))
+        shapes = None
+        if "shapes" in request.files and request.files["shapes"].filename:
+            f = request.files["shapes"]
+            shapes = _parse_upload(f.read(), _suffix(f))
+        fm = extract(tbox, events, shapes, load_map(None))
+    except Exception as exc:  # noqa: BLE001
+        return jsonify(error=f"parse failed: {exc}"), 400
+    if not fm.steps:
+        return jsonify(error="No process steps found. The flow view needs classes linked by "
+                             "sequence relations, such as 'immediately preceded by' some X "
+                             "(BFO/RO), on processes. Try the Classes view."), 400
+    try:
+        svg = render_flow_svg(fm, source=request.form.get("source") not in ("0", "false", "off"), tbox=tbox)
+    except Exception as exc:  # noqa: BLE001
+        return jsonify(error=f"render failed: {exc}"), 500
+    s = fm.summary()
+    return jsonify(svg=svg, engine="graphviz (flow)", view="flow", classes=s["steps"],
+                   edges=len(fm.edges), flow=s, cases=sorted(fm.cases), pruned=0,
+                   reasoning=None, groups=[])
 
 
 def main() -> None:

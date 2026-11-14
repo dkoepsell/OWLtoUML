@@ -23,6 +23,9 @@
       <button id="zoomIn" title="Zoom in">&plus;</button>
       <span class="sep"></span>
       <button id="source" title="Show or hide the OWL source of the clicked class or line (s)" hidden>Source</button>
+      <button id="viewToggle" title="Show the processes as a flow in swimlanes">Flow</button>
+      <select id="caseSel" title="Highlight one case's path" hidden><option value="">All cases</option></select>
+      <button id="practiced" title="Switch between the flow as practiced (from the events) and as designed (p)" hidden>Show designed</button>
       <button id="inferred" title="Show or hide what the reasoner inferred (i)" hidden>Show inferred</button>
       <button id="clearFocus" title="Clear highlighted classes (Esc)">Clear focus</button>
       <button id="resetLayout" title="Put dragged classes back">Reset layout</button>
@@ -65,6 +68,22 @@
             <input type="checkbox" id="reason" /> run reasoner
           </label>
         </div>
+        <div class="fmtrow">
+          <label for="view">View</label>
+          <select id="view" title="Flow: processes in swimlanes, from sequence relations such as 'immediately preceded by'">
+            <option value="classes">Classes</option>
+            <option value="flow">Flow (processes)</option>
+          </select>
+        </div>
+        <div class="fmtrow flowfiles" id="flowfiles" hidden>
+          <label class="smallfile" title="Instances of the process steps: an event log written as RDF">
+            Event log <input type="file" id="events" multiple accept=".owl,.ttl,.rdf,.xml,.n3,.nt,.jsonld,.json,.trig" />
+          </label>
+          <label class="smallfile" title="SHACL shapes to check the logged events against">
+            Rules (SHACL) <input type="file" id="shapes" accept=".ttl,.rdf,.xml,.n3,.nt,.jsonld,.json,.trig" />
+          </label>
+          <span class="hint">Both optional. Choose them before the ontology.</span>
+        </div>
       </div>
     </section>
 
@@ -79,7 +98,7 @@
 
   <footer id="status">
     <span id="statusText">Ready.</span>
-    <span class="hint" id="hint" hidden>dashed hollow arrow: defined class · dashed blue: restriction · hover: neighbours · click: pin · click again: widen · drag: move · Fill screen: spread out · click a line: jump · s: source · i: inferred · Esc: clear</span>
+    <span class="hint" id="hint" hidden>dashed hollow arrow: defined class · dashed blue: restriction · hover: neighbours · click: pin · click again: widen · drag: move · Fill screen: spread out · click a line: jump · s: source · i: inferred · p: designed/practiced · Esc: clear</span>
     <a href="/about" class="about-link">About the algorithms</a>
   </footer>
 </body>

@@ -1,0 +1,76 @@
+@prefix :     <http://example.org/p2p/> .
+@prefix obo:  <http://purl.obolibrary.org/obo/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# Purchase-to-pay as a BFO process ontology: the designed flow.
+<http://example.org/p2p/p2p.owl> a owl:Ontology ;
+    rdfs:label "Purchase-to-pay (example)" .
+
+obo:BFO_0000015 a owl:Class ; rdfs:label "process" .
+obo:BFO_0000023 a owl:Class ; rdfs:label "role" .
+obo:BFO_0000055 a owl:ObjectProperty ; rdfs:label "realizes" .
+obo:BFO_0000062 a owl:ObjectProperty , owl:TransitiveProperty ; rdfs:label "preceded by" .
+obo:RO_0002087 a owl:ObjectProperty ; rdfs:label "immediately preceded by" ;
+    rdfs:subPropertyOf obo:BFO_0000062 .
+obo:RO_0000057 a owl:ObjectProperty ; rdfs:label "has participant" .
+:forAmount a owl:DatatypeProperty ; rdfs:label "for amount" ; rdfs:range xsd:decimal .
+:inCase a owl:ObjectProperty ; rdfs:label "in case" .
+:occurredOn a owl:DatatypeProperty ; rdfs:label "occurred on" ; rdfs:range xsd:date .
+
+# Roles: these become the swimlanes.
+:RequesterRole a owl:Class ; rdfs:subClassOf obo:BFO_0000023 ; rdfs:label "requester role" .
+:ApproverRole a owl:Class ; rdfs:subClassOf obo:BFO_0000023 ; rdfs:label "approver role" .
+:ProcurementRole a owl:Class ; rdfs:subClassOf obo:BFO_0000023 ; rdfs:label "procurement role" .
+:ReceivingRole a owl:Class ; rdfs:subClassOf obo:BFO_0000023 ; rdfs:label "receiving role" .
+:FinanceRole a owl:Class ; rdfs:subClassOf obo:BFO_0000023 ; rdfs:label "finance role" .
+
+# Steps: each a process that realizes a role and is immediately preceded by
+# its designed predecessor(s).
+:PurchaseRequest a owl:Class ; rdfs:label "raise request" ; rdfs:subClassOf obo:BFO_0000015 ,
+    [ a owl:Restriction ; owl:onProperty obo:BFO_0000055 ; owl:someValuesFrom :RequesterRole ] .
+:BudgetCheck a owl:Class ; rdfs:label "budget check" ; rdfs:subClassOf obo:BFO_0000015 ,
+    [ a owl:Restriction ; owl:onProperty obo:BFO_0000055 ; owl:someValuesFrom :ApproverRole ] ,
+    [ a owl:Restriction ; owl:onProperty obo:RO_0002087 ; owl:someValuesFrom :PurchaseRequest ] .
+:ManagerApproval a owl:Class ; rdfs:label "manager approval" ; rdfs:subClassOf obo:BFO_0000015 ,
+    [ a owl:Restriction ; owl:onProperty obo:BFO_0000055 ; owl:someValuesFrom :ApproverRole ] ,
+    [ a owl:Restriction ; owl:onProperty obo:RO_0002087 ; owl:someValuesFrom :BudgetCheck ] .
+:DirectorApproval a owl:Class ; rdfs:label "director approval" ; rdfs:subClassOf obo:BFO_0000015 ,
+    [ a owl:Restriction ; owl:onProperty obo:BFO_0000055 ; owl:someValuesFrom :ApproverRole ] ,
+    [ a owl:Restriction ; owl:onProperty obo:RO_0002087 ; owl:someValuesFrom :ManagerApproval ] .
+:QuoteCollection a owl:Class ; rdfs:label "collect three quotes" ; rdfs:subClassOf obo:BFO_0000015 ,
+    [ a owl:Restriction ; owl:onProperty obo:BFO_0000055 ; owl:someValuesFrom :ProcurementRole ] ,
+    [ a owl:Restriction ; owl:onProperty obo:RO_0002087 ; owl:someValuesFrom :DirectorApproval ] .
+:POIssue a owl:Class ; rdfs:label "issue purchase order" ; rdfs:subClassOf obo:BFO_0000015 ,
+    [ a owl:Restriction ; owl:onProperty obo:BFO_0000055 ; owl:someValuesFrom :ProcurementRole ] ,
+    [ a owl:Restriction ; owl:onProperty obo:RO_0002087 ; owl:someValuesFrom
+        [ owl:unionOf ( :ManagerApproval :DirectorApproval :QuoteCollection ) ] ] .
+:GoodsReceipt a owl:Class ; rdfs:label "receive goods" ; rdfs:subClassOf obo:BFO_0000015 ,
+    [ a owl:Restriction ; owl:onProperty obo:BFO_0000055 ; owl:someValuesFrom :ReceivingRole ] ,
+    [ a owl:Restriction ; owl:onProperty obo:RO_0002087 ; owl:someValuesFrom :POIssue ] .
+:InvoiceReceipt a owl:Class ; rdfs:label "invoice received" ; rdfs:subClassOf obo:BFO_0000015 ,
+    [ a owl:Restriction ; owl:onProperty obo:BFO_0000055 ; owl:someValuesFrom :FinanceRole ] ,
+    [ a owl:Restriction ; owl:onProperty obo:RO_0002087 ; owl:someValuesFrom :GoodsReceipt ] ,
+    [ a owl:Restriction ; owl:onProperty obo:BFO_0000062 ; owl:someValuesFrom :POIssue ] .
+:ThreeWayMatch a owl:Class ; rdfs:label "three-way match" ; rdfs:subClassOf obo:BFO_0000015 ,
+    [ a owl:Restriction ; owl:onProperty obo:BFO_0000055 ; owl:someValuesFrom :FinanceRole ] ,
+    [ a owl:Restriction ; owl:onProperty obo:RO_0002087 ; owl:someValuesFrom :InvoiceReceipt ] .
+:PaymentRelease a owl:Class ; rdfs:label "release payment" ; rdfs:subClassOf obo:BFO_0000015 ,
+    [ a owl:Restriction ; owl:onProperty obo:BFO_0000055 ; owl:someValuesFrom :FinanceRole ] ,
+    [ a owl:Restriction ; owl:onProperty obo:RO_0002087 ; owl:someValuesFrom :ThreeWayMatch ] ,
+    [ a owl:Restriction ; owl:onProperty obo:BFO_0000062 ; owl:someValuesFrom :ThreeWayMatch ] .
+
+# Conditional requirements (the gateways), as defined classes.
+:HighValuePO a owl:Class ; rdfs:label "PO above director threshold" ;
+    owl:equivalentClass [ owl:intersectionOf ( :POIssue
+        [ a owl:Restriction ; owl:onProperty :forAmount ; owl:someValuesFrom
+            [ a rdfs:Datatype ; owl:onDatatype xsd:decimal ; owl:withRestrictions ( [ xsd:minExclusive 10000 ] ) ] ] ) ] ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty obo:BFO_0000062 ; owl:someValuesFrom :DirectorApproval ] ;
+    rdfs:comment "Procurement Policy §3.1: director approval above $10,000." .
+:TenderPO a owl:Class ; rdfs:label "PO above quote threshold" ;
+    owl:equivalentClass [ owl:intersectionOf ( :POIssue
+        [ a owl:Restriction ; owl:onProperty :forAmount ; owl:someValuesFrom
+            [ a rdfs:Datatype ; owl:onDatatype xsd:decimal ; owl:withRestrictions ( [ xsd:minExclusive 25000 ] ) ] ] ) ] ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty obo:BFO_0000062 ; owl:someValuesFrom :QuoteCollection ] ;
+    rdfs:comment "Procurement Policy §3.4: three quotes above $25,000." .

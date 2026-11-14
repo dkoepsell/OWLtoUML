@@ -48,9 +48,24 @@ def main(argv: list[str] | None = None) -> int:
                     help="inline the viewer script, so the SVG opened in a browser "
                          "supports hover, pin, drag, zoom, the source panel (s) and "
                          "the inferred toggle (i)")
+    flow = ap.add_argument_group("flow view (process ontologies)")
+    flow.add_argument("--flow", action="store_true",
+                      help="draw the processes as a flow in swimlanes instead of a class "
+                           "diagram: sequence relations become arrows, roles become lanes")
+    flow.add_argument("--events", action="append", default=[], metavar="FILE",
+                      help="instances of the process steps (an event log as RDF); draws the "
+                           "flow as practiced. Repeatable")
+    flow.add_argument("--shapes", metavar="FILE",
+                      help="SHACL shapes to check the events against; violations are "
+                           "pinned to their steps")
+    flow.add_argument("--flow-map", metavar="FILE",
+                      help="JSON mapping of which relations count as sequence, lane and "
+                           "case (default: BFO 2020 and RO relations)")
     args = ap.parse_args(argv)
 
     out = args.output or _default_out(args.input)
+    if args.flow or args.events or args.shapes:
+        return _flow(args, out)
 
     try:
         graph = load_graph(args.input, fmt=args.format)
@@ -101,6 +116,42 @@ def main(argv: list[str] | None = None) -> int:
                   f"subclass relations drawn, {r['unsatisfiable']} unsatisfiable classes, "
                   f"{r['equivalences']} inferred equivalences", file=sys.stderr)
     print(f"wrote {out}  ({len(model.classes)} classes, {len(model.edges)} relations{pruned})")
+    return 0
+
+
+def _flow(args, out: str) -> int:
+    from rdflib import Graph
+    from .flow import extract, load_map, render_flow_svg
+    from .source import inline_viewer
+    if not dot_available():
+        print("error: the flow view needs graphviz (dot and neato)", file=sys.stderr)
+        return 1
+    try:
+        tbox = load_graph(args.input, fmt=args.format)
+        events = None
+        for path in args.events:
+            events = events if events is not None else Graph()
+            events += load_graph(path)
+        shapes = load_graph(args.shapes) if args.shapes else None
+        fm = extract(tbox, events, shapes, load_map(args.flow_map))
+    except Exception as exc:  # noqa: BLE001
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    if not fm.steps:
+        print("error: no process steps found. The flow view needs classes linked by sequence "
+              "relations (e.g. 'immediately preceded by' some X); see --flow-map.", file=sys.stderr)
+        return 1
+    if args.shapes and not args.events:
+        print("note: --shapes checks instances; without --events there is nothing to check", file=sys.stderr)
+    svg = render_flow_svg(fm, source=not args.no_source, tbox=tbox)
+    if args.interactive:
+        svg = inline_viewer(svg)
+    with open(out, "w", encoding="utf-8") as fh:
+        fh.write(svg)
+    s = fm.summary()
+    extra = (f", {s['cases']} cases, {s['deviations']} undesigned paths" if fm.has_events else "") + \
+            (f", {s['findings']} SHACL findings" if s["shapes"] else "")
+    print(f"wrote {out}  (flow: {s['steps']} steps in {s['lanes']} lanes{extra})")
     return 0
 
 

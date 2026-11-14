@@ -192,3 +192,11 @@ footer#status .about-link:hover { text-decoration: underline; }
   width: min(420px, calc(100% - 24px)); pointer-events: none; z-index: 5;
 }
 .source-panel .o2u-src { pointer-events: auto; }
+
+/* Flow view inputs on the start screen */
+.flowfiles { flex-wrap: wrap; justify-content: center; gap: 0.5rem 1rem; font-size: 0.85rem; }
+.flowfiles[hidden] { display: none; }
+.smallfile { display: inline-flex; align-items: center; gap: 0.4rem; }
+.smallfile input { font-size: 0.8rem; max-width: 14rem; }
+.flowfiles .hint { width: 100%; text-align: center; font-size: 0.78rem; opacity: 0.8; }
+#caseSel { max-width: 12rem; }

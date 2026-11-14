@@ -13,6 +13,7 @@ let matchIdx = -1;
 // no svg-pan-zoom runtime transforms or overlays).
 let lastSvgText = null;
 let lastName = "diagram";
+let lastFile = null;       // kept so the view can be switched without re-choosing it
 
 // ---- status helpers --------------------------------------------------------
 function setStatus(msg, isError = false) {
@@ -32,11 +33,18 @@ async function renderFile(file) {
   showOverlay("Parsing & laying out…");
   setStatus(`Uploading ${file.name} (${(file.size / 1024).toFixed(0)} KB)…`);
 
+  lastFile = file;
+  const flow = $("view").value === "flow";
   const fd = new FormData();
   fd.append("file", file);
   fd.append("format", $("format").value);
   if ($("keepUnused").checked) fd.append("keep_unused", "1");
   if ($("reason").checked) fd.append("reason", "auto");
+  if (flow) {
+    fd.append("view", "flow");
+    for (const f of $("events").files) fd.append("events", f);
+    if ($("shapes").files[0]) fd.append("shapes", $("shapes").files[0]);
+  }
 
   let res, data;
   try {
@@ -56,6 +64,14 @@ async function renderFile(file) {
   lastSvgText = data.svg;
   lastName = file.name.replace(/\.[^.]+$/, "") || "diagram";
   mountSvg(data.svg);
+  setupFlow(data);
+  if (data.view === "flow") {
+    const f = data.flow;
+    const ev = f.cases ? ` · ${f.cases} cases, ${f.deviations} undesigned path(s)` : "";
+    const sh = f.shapes ? ` · ${f.findings} SHACL finding(s)` : "";
+    setStatus(`${file.name} — flow: ${f.steps} steps in ${f.lanes} lanes${ev}${sh}`);
+    return;
+  }
   const pruned = data.pruned ? ` · ${data.pruned} unused imported classes left out` : "";
   setupInferred(data.reasoning);
   const groups = data.groups && data.groups.length > 1 ? ` · ${data.groups.length} groups` : "";
@@ -130,6 +146,28 @@ function toggleInferred() {
   if (!svgEl || !inferredCount) return;
   const hidden = svgEl.classList.toggle("hide-inferred");
   $("inferred").textContent = `${hidden ? "Show" : "Hide"} inferred (${inferredCount})`;
+}
+
+// ---- flow view ---------------------------------------------------------------
+// The flow SVG carries both the practiced flow (from events) and the designed
+// one; the "o2u-designed" class on the <svg> hides what came from the events.
+function setupFlow(data) {
+  const flow = data.view === "flow";
+  $("viewToggle").textContent = flow ? "Classes" : "Flow";
+  $("viewToggle").title = flow ? "Show the class diagram" : "Show the processes as a flow in swimlanes";
+  // Spreading would pull steps out of their lanes, which are drawn in place.
+  $("spread").hidden = flow;
+  const sel = $("caseSel");
+  sel.innerHTML = '<option value="">All cases</option>' +
+    (flow ? (data.cases || []).map((c) => `<option value="${c.replace(/"/g, "&quot;")}">${c.replace(/</g, "&lt;")}</option>`).join("") : "");
+  sel.hidden = !(flow && data.cases && data.cases.length);
+  $("practiced").hidden = !(flow && data.flow && data.flow.cases);
+  $("practiced").textContent = "Show designed";
+}
+function togglePracticed() {
+  if (!svgEl) return;
+  const designed = svgEl.classList.toggle("o2u-designed");
+  $("practiced").textContent = designed ? "Show practiced" : "Show designed";
 }
 
 // ---- search ----------------------------------------------------------------
@@ -318,6 +356,15 @@ window.addEventListener("DOMContentLoaded", () => {
   $("download").addEventListener("click", downloadSvg);
   $("clearFocus").addEventListener("click", () => interact && interact.clear());
   $("inferred").addEventListener("click", toggleInferred);
+  $("view").addEventListener("change", () => { $("flowfiles").hidden = $("view").value !== "flow"; });
+  $("viewToggle").addEventListener("click", () => {
+    if (!lastFile) return;
+    $("view").value = $("view").value === "flow" ? "classes" : "flow";
+    $("flowfiles").hidden = $("view").value !== "flow";
+    renderFile(lastFile);
+  });
+  $("caseSel").addEventListener("change", (e) => { if (interact) interact.showCase(e.target.value); });
+  $("practiced").addEventListener("click", togglePracticed);
   $("source").addEventListener("click", () => {
     const p = interact && interact.panel();
     if (p) p.toggle();
@@ -331,6 +378,12 @@ window.addEventListener("DOMContentLoaded", () => {
   }, true);
   document.addEventListener("keydown", (e) => {
     if (e.key === "i" && e.target.tagName !== "INPUT") toggleInferred();
+    if (e.key === "p" && !/^(INPUT|SELECT)$/.test(e.target.tagName) && !$("practiced").hidden) {
+      // interact.js toggles the class; update the button once it has
+      setTimeout(() => {
+        $("practiced").textContent = svgEl && svgEl.classList.contains("o2u-designed") ? "Show practiced" : "Show designed";
+      }, 0);
+    }
   });
   $("spread").addEventListener("click", spreadToFit);
   $("resetLayout").addEventListener("click", () => {

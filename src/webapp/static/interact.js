@@ -400,6 +400,8 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       const n = nodeAt(ev.target);
       if (!n || ev.button > 0) return;
       ev.stopPropagation();
+      // Edit mode may take the press (e.g. to draw a new line from this class).
+      if (opts.edit && opts.edit.nodeDown && opts.edit.nodeDown(ev, n.id)) return;
       const p = local(ev, n.g.parentNode);
       drag = { n, x: p.x, y: p.y, off: n.off.slice(), moved: false, shift: ev.shiftKey };
       doc.addEventListener("pointermove", onMove);
@@ -417,6 +419,7 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       drag.n.off = [drag.off[0] + p.x - drag.x, drag.off[1] + p.y - drag.y];
       placeNode(drag.n);
       drag.n.edges.forEach(redraw);
+      if (opts.edit && opts.edit.moved) opts.edit.moved(drag.n.id);
       fitCanvas();
     }
 
@@ -434,6 +437,12 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       if (moved || nodeAt(ev.target)) return;
       const e = edgeAt(ev.target);
       if (!e) { if (pinned.size) clear(); return; }
+      // In edit mode a click selects the line instead of following it.
+      if (opts.edit && opts.edit.edgeClick && opts.edit.edgeClick(e.g.id, ev)) {
+        showEdge(e);
+        if (panel && e.g.id) panel.showEdge(e.g.id);
+        return;
+      }
       // Jump to whichever end is farther from where the line was clicked.
       const dist = (id) => {
         const r = nodes.get(id).g.getBoundingClientRect();
@@ -481,6 +490,31 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       source: () => source,
       showCase: (id) => { showCase(id); if (panel && id) panel.showCase(id); },
       idOf: (g) => titleOf(g),
+      // ---- for edit mode (static/edit.js) ----
+      // The <g> that holds the classes: draft drawings go in its coordinates.
+      layer: () => { const n = nodes.values().next().value; return n ? n.g.parentNode : svg; },
+      nodeIds: () => [...nodes.keys()],
+      nodeEl: (id) => nodes.has(id) ? nodes.get(id).g : null,
+      nodeAtPoint: (x, y) => {
+        const n = nodeAt(doc.elementFromPoint(x, y) || svg);
+        return n ? n.id : null;
+      },
+      // A class's box in layer coordinates, including any drag offset.
+      nodeBox: (id) => {
+        const n = nodes.get(id);
+        if (!n) return null;
+        const b = n.g.getBBox();
+        return { x: b.x + n.off[0], y: b.y + n.off[1], width: b.width, height: b.height };
+      },
+      // First and last point of a drawn line, in layer coordinates.
+      edgeEnds: (eid) => {
+        const e = edges.find((x) => x.g.id === eid);
+        if (!e) return null;
+        const p = e.paths[1].el, len = p.getTotalLength();
+        const a = p.getPointAtLength(0), b = p.getPointAtLength(len);
+        return { s: e.s, t: e.t, from: { x: a.x, y: a.y }, to: { x: b.x, y: b.y } };
+      },
+      edgeIds: () => edges.map((e) => e.g.id).filter(Boolean),
       clear,
       reset,
       spread,

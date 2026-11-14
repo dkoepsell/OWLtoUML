@@ -5,11 +5,13 @@ the browser handles pan/zoom/search.
 """
 from __future__ import annotations
 
+import json
 import os
+import re
 import sys
 import tempfile
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, Response, request, jsonify, send_from_directory
 
 # Make the sibling `owl2uml` package importable.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -21,6 +23,7 @@ from owl2uml.dot import dot_available, render_dot_svg  # noqa: E402
 from owl2uml.layout import layout                  # noqa: E402
 from owl2uml.render import render_svg              # noqa: E402
 from owl2uml.source import build_source            # noqa: E402
+from owl2uml import edit as editing               # noqa: E402
 
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
@@ -61,8 +64,13 @@ def render():
         return jsonify(error="no ontology provided"), 400
     if request.form.get("view") == "flow":
         return _render_flow(data, suffix, fmt)
+    try:
+        ops = _load_edits()
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
 
     tmp_path = None
+    edit_report = None
     try:
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=suffix, mode="wb"
@@ -71,6 +79,8 @@ def render():
             tmp_path = tmp.name
 
         graph = load_graph(tmp_path, fmt=fmt)
+        if ops:
+            edit_report = editing.apply_edits(graph, ops)
         model = parse_ontology(tmp_path, graph=graph)
         engine_req = request.form.get("reason") or "none"
         if engine_req not in reason.ENGINES:
@@ -112,11 +122,62 @@ def render():
         edges=len(model.edges),
         pruned=report["pruned"],
         reasoning=inf.report(),
+        edits=edit_report,
         groups=[
             {"name": g.name, "color": g.color, "count": g.count, "upper": g.upper}
             for g in sorted(model.groups.values(), key=lambda g: (g.upper, g.name))
         ],
     )
+
+
+def _load_edits() -> list:
+    """The edit-mode op list from the "edits" form field ([] when absent)."""
+    raw = request.form.get("edits")
+    if not raw:
+        return []
+    try:
+        ops = json.loads(raw)
+    except ValueError as exc:
+        raise ValueError(f"edits: not valid JSON ({exc})") from None
+    if not isinstance(ops, list):
+        raise ValueError("edits: expected a list of operations")
+    if len(ops) > editing.MAX_OPS:
+        raise ValueError(f"edits: too many operations (max {editing.MAX_OPS})")
+    return ops
+
+
+_EXPORT = {"turtle": ("ttl", "text/turtle"), "xml": ("owl", "application/rdf+xml")}
+
+
+@app.post("/api/export")
+def export():
+    """The uploaded ontology with the edit-mode ops applied, as a draft OWL file."""
+    f = request.files.get("file")
+    if not f:
+        return jsonify(error="no ontology provided"), 400
+    try:
+        ops = _load_edits()
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+    fmt = request.form.get("format") or None
+    fmt = None if fmt in (None, "", "auto") else fmt
+    out = request.form.get("fmt") or ("xml" if _suffix(f) in (".owl", ".rdf", ".xml") else "turtle")
+    if out not in _EXPORT:
+        return jsonify(error=f"unknown export format: {out}"), 400
+    try:
+        graph = _parse_upload(f.read(), _suffix(f), fmt)
+        report = editing.apply_edits(graph, ops)
+        body = editing.serialize(graph, out)
+    except Exception as exc:  # noqa: BLE001
+        return jsonify(error=f"export failed: {exc}"), 400
+    ext, mime = _EXPORT[out]
+    stem = (f.filename or "ontology").rsplit(".", 1)[0] or "ontology"
+    stem = re.sub(r"[^A-Za-z0-9._-]+", "_", stem)
+    resp = Response(body, mimetype=mime)
+    resp.headers["Content-Disposition"] = f'attachment; filename="{stem}-edited.{ext}"'
+    resp.headers["X-Edits-Applied"] = str(report["applied"])
+    resp.headers["X-Edits-Skipped"] = str(len(report["skipped"]))
+    return resp
 
 
 def _parse_upload(data: bytes, suffix: str, fmt=None):

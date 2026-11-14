@@ -15,6 +15,10 @@ let lastSvgText = null;
 let lastName = "diagram";
 let lastFile = null;       // kept so the view can be switched without re-choosing it
 
+// Edit mode (static/edit.js): a list of edits applied server-side on re-layout/export.
+let editor = null;
+let exportedAt = 0;        // edit count when last exported, for the unsaved-edits warning
+
 // ---- status helpers --------------------------------------------------------
 function setStatus(msg, isError = false) {
   const s = $("status");
@@ -33,6 +37,14 @@ async function renderFile(file) {
   showOverlay("Parsing & laying out…");
   setStatus(`Uploading ${file.name} (${(file.size / 1024).toFixed(0)} KB)…`);
 
+  let restore = null;
+  if (file !== lastFile && editor) {
+    if (editor.count() > exportedAt && !confirm("Discard your unexported edits to the current ontology?")) {
+      hideOverlay(); setStatus("Kept the current ontology"); return;
+    }
+    restore = editor.bindFile(file);
+    exportedAt = 0;
+  }
   lastFile = file;
   const flow = $("view").value === "flow";
   const fd = new FormData();
@@ -44,6 +56,8 @@ async function renderFile(file) {
     fd.append("view", "flow");
     for (const f of $("events").files) fd.append("events", f);
     if ($("shapes").files[0]) fd.append("shapes", $("shapes").files[0]);
+  } else if (editor && editor.count()) {
+    fd.append("edits", JSON.stringify(editor.ops()));
   }
 
   let res, data;
@@ -77,8 +91,84 @@ async function renderFile(file) {
   const groups = data.groups && data.groups.length > 1 ? ` · ${data.groups.length} groups` : "";
   setStatus(
     `${file.name} — ${data.classes} classes, ${data.edges} relations${groups}${pruned} · engine: ${data.engine}` +
-    reasoningNote(data.reasoning), !!(data.reasoning && (data.reasoning.error || data.reasoning.inconsistent))
+    reasoningNote(data.reasoning) + editsNote(data.edits),
+    !!(data.reasoning && (data.reasoning.error || data.reasoning.inconsistent)) ||
+    !!(data.edits && data.edits.skipped.length)
   );
+  rendered = true;
+  if (restore && confirm(`You have ${restore.length} unexported edit(s) saved for ${file.name}. Restore them?`)) {
+    editor.load(restore);
+    setEditMode(true);
+  }
+}
+
+// ---- edit mode -----------------------------------------------------------------
+function editsNote(r) {
+  if (!r) return "";
+  const sk = r.skipped.length ? `, ${r.skipped.length} could not be applied (${editor.skipped(r.skipped).join("; ")})` : "";
+  return ` · ${r.applied} edit(s) applied${sk}`;
+}
+
+function setEditMode(v) {
+  if (!editor) return;
+  if (v && !interact) return;
+  if (v && !editorAttached) {
+    setStatus("Edit mode needs the class view drawn with Graphviz", true);
+    return;
+  }
+  editor.setOn(v);
+  $("editToggle").classList.toggle("active", v);
+  $("editToggle").textContent = v ? "Done editing" : "Edit";
+  $("editTools").hidden = !v;
+  $("editHelp").hidden = !v;
+}
+
+function updateEditCount(nSteps) {
+  $("editCount").textContent = `${nSteps} edit${nSteps === 1 ? "" : "s"}`;
+  $("undo").disabled = !nSteps;
+  $("editToggle").classList.toggle("has-edits", nSteps > 0);
+}
+
+let editorAttached = false;
+let rendered = false;      // set by renderFile when a class view came back
+
+async function relayout() {
+  if (!lastFile) return;
+  rendered = false;
+  await renderFile(lastFile);
+  if (rendered && editor) { editor.markBaked(); editor.setOn(editor.isOn()); }
+}
+
+async function exportOwl() {
+  if (!lastFile || !editor) return;
+  const fd = new FormData();
+  fd.append("file", lastFile);
+  fd.append("format", $("format").value);
+  fd.append("fmt", $("exportFmt").value);
+  fd.append("edits", JSON.stringify(editor.ops()));
+  setStatus("Exporting…");
+  let res;
+  try {
+    res = await fetch("/api/export", { method: "POST", body: fd });
+  } catch (e) { setStatus(`Network error: ${e.message}`, true); return; }
+  if (!res.ok) {
+    let msg = `Export failed (${res.status})`;
+    try { msg = (await res.json()).error || msg; } catch (_) {}
+    setStatus(msg, true);
+    return;
+  }
+  const blob = await res.blob();
+  const cd = res.headers.get("Content-Disposition") || "";
+  const m = cd.match(/filename="([^"]+)"/);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = m ? m[1] : `${lastName}-edited.ttl`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  exportedAt = editor.count();
+  const skipped = +(res.headers.get("X-Edits-Skipped") || 0);
+  setStatus(`Exported ${a.download} — ${res.headers.get("X-Edits-Applied") || 0} edit(s) applied` +
+    (skipped ? `, ${skipped} could not be applied (Re-layout to see which)` : ""), !!skipped);
 }
 
 function mountSvg(svgText) {
@@ -112,8 +202,13 @@ function mountSvg(svgText) {
   // Hover/pin/drag/follow-the-line behaviour (static/interact.js).
   // Clicking a class or line shows its OWL source in the side panel.
   $("sourcePanel").innerHTML = "";
-  interact = OwlUmlInteract.attach(svgEl, { onNavigate: centerOn, sourceHost: $("sourcePanel") });
+  interact = OwlUmlInteract.attach(svgEl, {
+    onNavigate: centerOn, sourceHost: $("sourcePanel"), edit: editor ? editor.hooks : null,
+  });
   $("source").hidden = !interact.panel();
+  editorAttached = !!(editor && editor.attach(svgEl, interact));
+  $("editToggle").hidden = !editorAttached;
+  if (!editorAttached && editor && editor.isOn()) setEditMode(false);
 
   matches = [];
   matchIdx = -1;
@@ -274,7 +369,10 @@ async function downloadSvg() {
     out.setAttribute("width", `${b.width}pt`);
     out.setAttribute("height", `${b.height}pt`);
   }
-  out.querySelectorAll("style.oi-style, path.oi-hit").forEach((n) => n.remove());
+  out.querySelectorAll("style.oi-style, path.oi-hit, g.o2u-draft").forEach((n) => n.remove());
+  out.classList.remove("o2u-editing");
+  out.querySelectorAll(".o2u-deleted, .o2u-moved, .o2u-sel")
+    .forEach((n) => n.classList.remove("o2u-deleted", "o2u-moved", "o2u-sel"));
   // Keep the inferred-view stylesheet even if svg-pan-zoom left it outside the
   // viewport group we copied from.
   if (!out.querySelector("style.o2u-style")) {
@@ -309,6 +407,21 @@ async function downloadSvg() {
 
 // ---- wiring ----------------------------------------------------------------
 window.addEventListener("DOMContentLoaded", () => {
+  if (window.OwlUmlEdit) {
+    editor = OwlUmlEdit.create({
+      onChange: (n) => updateEditCount(n),
+      onStale: () => setStatus("Undid an edit that is already drawn — Re-layout to redraw without it"),
+    });
+  }
+  $("editToggle").addEventListener("click", () => setEditMode(!(editor && editor.isOn())));
+  $("addClass").addEventListener("click", () => editor && editor.addClass());
+  $("undo").addEventListener("click", () => editor && editor.undo());
+  $("redo").addEventListener("click", () => editor && editor.redo());
+  $("relayout").addEventListener("click", relayout);
+  $("exportOwl").addEventListener("click", exportOwl);
+  window.addEventListener("beforeunload", (e) => {
+    if (editor && editor.count() > exportedAt) { e.preventDefault(); e.returnValue = ""; }
+  });
   $("file").addEventListener("change", (e) => {
     const f = e.target.files[0];
     e.target.value = "";          // allow re-selecting the same file later
@@ -377,6 +490,8 @@ window.addEventListener("DOMContentLoaded", () => {
     if (a && a.tagName === "INPUT") a.blur();
   }, true);
   document.addEventListener("keydown", (e) => {
+    if (e.key === "e" && !/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName) && !e.ctrlKey && !e.metaKey &&
+        !$("editToggle").hidden) setEditMode(!editor.isOn());
     if (e.key === "i" && e.target.tagName !== "INPUT") toggleInferred();
     if (e.key === "p" && !/^(INPUT|SELECT)$/.test(e.target.tagName) && !$("practiced").hidden) {
       // interact.js toggles the class; update the button once it has

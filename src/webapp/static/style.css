@@ -200,3 +200,45 @@ footer#status .about-link:hover { text-decoration: underline; }
 .smallfile input { font-size: 0.8rem; max-width: 14rem; }
 .flowfiles .hint { width: 100%; text-align: center; font-size: 0.78rem; opacity: 0.8; }
 #caseSel { max-width: 12rem; }
+
+/* ---- edit mode ------------------------------------------------------------ */
+#editToggle.active { background: #b5541c; color: #fff; border-color: #b5541c; }
+#editToggle.has-edits:not(.active)::after { content: " •"; color: #b5541c; }
+.edit-tools { display: inline-flex; gap: 0.35rem; align-items: center; }
+.edit-tools select { font: inherit; font-size: 0.8rem; padding: 0.3rem; border: 1px solid var(--line); border-radius: 6px; }
+.edit-count { font-size: 0.8rem; color: var(--muted); min-width: 4.5em; text-align: center; }
+button.primary { background: #b5541c; color: #fff; border-color: #b5541c; }
+button.primary:hover { background: #8f4216; }
+button:disabled { opacity: 0.45; cursor: default; }
+.edit-help {
+  font-size: 0.8rem; color: var(--ink); background: #fbeee3; border-bottom: 1px solid #ecd2bd;
+  padding: 0.35rem 1rem; line-height: 1.5;
+}
+.edit-pop {
+  position: fixed; z-index: 50; width: 300px; background: var(--panel); border: 1px solid #cfc8ba;
+  border-radius: 8px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18); padding: 0.7rem; font-size: 0.85rem;
+}
+.edit-pop label { display: block; margin-bottom: 0.5rem; color: var(--muted); }
+.edit-pop label.chk { color: var(--ink); }
+.edit-pop input:not([type=checkbox]), .edit-pop select {
+  display: block; width: 100%; box-sizing: border-box; margin-top: 0.2rem; font: inherit; color: var(--ink);
+  padding: 0.35rem; border: 1px solid var(--line); border-radius: 5px;
+}
+.edit-pop-title { font-weight: 600; margin-bottom: 0.5rem; overflow-wrap: anywhere; }
+.edit-pop-btns { display: flex; justify-content: flex-end; gap: 0.4rem; margin-top: 0.4rem; }
+
+/* draft overlay inside the diagram */
+svg.o2u-editing g.node { cursor: grab; }
+svg .o2u-draft-edge line { stroke: #b5541c; stroke-width: 2; stroke-dasharray: 7 4; }
+svg .o2u-draft-edge.gen line { stroke-dasharray: 3 3; }
+svg .o2u-draft-edge text { font: 11px Helvetica, Arial, sans-serif; fill: #b5541c; paint-order: stroke; stroke: #fff; stroke-width: 3px; }
+svg #o2u-draft-arrow path { stroke: #b5541c; stroke-width: 1.5; }
+svg .o2u-draft-class rect { fill: #fff7ef; stroke: #b5541c; stroke-width: 1.5; stroke-dasharray: 5 3; }
+svg .o2u-draft-class text { font: bold 13px Helvetica, Arial, sans-serif; fill: #1a1a1a; }
+svg .o2u-draft-class { cursor: move; }
+svg .o2u-deleted { opacity: 0.22; }
+svg g.edge.o2u-moved { opacity: 0.25; }
+svg g.edge.o2u-sel path { stroke: #b5541c !important; stroke-width: 3 !important; }
+svg g.node.o2u-sel polygon, svg g.node.o2u-sel path { stroke: #b5541c !important; stroke-width: 2.5 !important; }
+svg .o2u-handle { fill: #fff; stroke: #b5541c; stroke-width: 2; cursor: crosshair; }
+svg .o2u-temp { stroke: #b5541c; stroke-width: 2; stroke-dasharray: 4 3; pointer-events: none; }

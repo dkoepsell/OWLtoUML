@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/static/style.css" />
   <script defer src="/static/vendor/svg-pan-zoom.min.js"></script>
   <script defer src="/static/interact.js"></script>
+  <script defer src="/static/edit.js"></script>
   <script defer src="/static/app.js"></script>
 </head>
 <body>
@@ -30,10 +31,30 @@
       <button id="clearFocus" title="Clear highlighted classes (Esc)">Clear focus</button>
       <button id="resetLayout" title="Put dragged classes back">Reset layout</button>
       <span class="sep"></span>
+      <button id="editToggle" hidden title="Edit the ontology on the diagram, then export a draft OWL file (e)">Edit</button>
+      <span class="edit-tools" id="editTools" hidden>
+        <button id="addClass" title="Add a class (or double-click empty canvas)">+ Class</button>
+        <button id="undo" title="Undo the last edit (Ctrl+Z)">Undo</button>
+        <button id="redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
+        <span class="edit-count" id="editCount">0 edits</span>
+        <button id="relayout" title="Redraw the diagram with your edits applied">Re-layout</button>
+        <select id="exportFmt" title="Format of the exported OWL file">
+          <option value="turtle">Turtle (.ttl)</option>
+          <option value="xml">RDF/XML (.owl)</option>
+        </select>
+        <button id="exportOwl" class="primary" title="Download the ontology with your edits">Export OWL</button>
+      </span>
+      <span class="sep"></span>
       <button id="open" title="Open another ontology">Open…</button>
       <button id="download" title="Download SVG">Download SVG</button>
     </div>
   </header>
+  <div class="edit-help" id="editHelp" hidden>
+    <b>Editing.</b> Drag a class to move it · <b>Alt-drag</b> from one class to another to add a line ·
+    click a line, then drag one of its end handles onto another class to reconnect it · <b>Delete</b> removes the selected line or class ·
+    double-click a class to rename it, or empty canvas to add one.
+  </div>
+  <div class="edit-pop" id="editPop" hidden></div>
 
   <main id="stage">
     <section id="dropzone" class="dropzone">

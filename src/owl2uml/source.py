@@ -19,6 +19,7 @@ from rdflib import BNode, Graph, Literal, OWL, RDF, RDFS, URIRef
 from rdflib.collection import Collection
 from rdflib.namespace import SKOS, XSD
 
+from .edit import edge_parts
 from .model import UModel
 from .parse import _build_labels, _display, _local
 
@@ -382,10 +383,16 @@ def build_source(g: Graph, m: UModel) -> dict:
                 refs += [[e.dst, j] for j, a in enumerate(classes[e.dst]["ax"])
                          if e.src in a["refs"]]
             info["axioms"] = refs
+            if e.kind == "restriction":   # edit mode: one handle per axiom
+                info["parts"] = edge_parts(g, e.kind, e.src, e.dst)
         edges[f"e{i}"] = info
 
+    # Every object property, for edit mode's property picker.
+    plabels = _build_labels(g)
+    objprops = {str(p): _display(p, plabels) for p in set(g.subjects(RDF.type, OWL.ObjectProperty))
+                if isinstance(p, URIRef)}
     return {"version": 1, "ontology": m.ontology_iri, "nodes": nodes,
-            "classes": classes, "props": props, "edges": edges}
+            "classes": classes, "props": props, "edges": edges, "objprops": objprops}
 
 
 def _premises(g: Graph, src: URIRef, dst: URIRef, classes: dict, prop) -> dict:

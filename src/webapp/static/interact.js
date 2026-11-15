@@ -493,6 +493,9 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       if (ev.key === "Escape") clear();
       const typing = ev.target && /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName);
       if (ev.key === "s" && panel && !typing && !ev.ctrlKey && !ev.metaKey) panel.toggle();
+      // l: save the layout (a .layout.json sidecar) -- for downloaded SVGs;
+      // the web app has its own button.
+      if (ev.key === "l" && !typing && !ev.ctrlKey && !ev.metaKey && !opts.app) saveLayout();
       if (ev.key === "p" && source && source.view === "flow" && !typing && !ev.ctrlKey && !ev.metaKey)
         svg.classList.toggle("o2u-designed");
     }
@@ -505,7 +508,35 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
 
     if (opts.standalone) standalone(svg);
 
+    // Where every class is now, keyed by IRI, in Graphviz points (y up) -- the
+    // .layout.json sidecar format (owl2uml/pinning.py). Moved classes are pinned.
+    function layout() {
+      if (!source || !source.nodes) return {};
+      const out = {};
+      for (const b of boxes()) {
+        const iri = source.nodes[b.n.id];
+        if (!iri || iri.startsWith("_:")) continue;
+        out[iri] = { x: +b.x.toFixed(2), y: +(-b.y).toFixed(2),
+                     pinned: Math.abs(b.n.off[0]) + Math.abs(b.n.off[1]) > 0.5 };
+      }
+      return out;
+    }
+
+    // Save the layout as a file (works in a downloaded SVG opened on its own).
+    function saveLayout(name) {
+      const blob = new Blob([JSON.stringify(layout(), null, 1)], { type: "application/json" });
+      const a = doc.createElementNS("http://www.w3.org/1999/xhtml", "a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name || "diagram.layout.json";
+      (doc.body || doc.documentElement).appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+
     return {
+      layout,
+      saveLayout,
       pin: (id) => { pinned = new Set([id]); hops = 1; restore(); if (panel) panel.showClass(source.nodes[id]); },
       panel: () => panel,
       source: () => source,

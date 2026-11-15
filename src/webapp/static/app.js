@@ -13,7 +13,8 @@ let matchIdx = -1;
 // no svg-pan-zoom runtime transforms or overlays).
 let lastSvgText = null;
 let lastName = "diagram";
-let lastFile = null;       // kept so the view can be switched without re-choosing it
+let lastFile = null;
+let lastFileSent = null;   // the sidecar upload applies to the first drawing only       // kept so the view can be switched without re-choosing it
 
 // Edit mode (static/edit.js): a list of edits applied server-side on re-layout/export.
 let editor = null;
@@ -45,6 +46,9 @@ async function renderFile(file) {
     restore = editor.bindFile(file);
     exportedAt = 0;
   }
+  // Saved positions: moved classes stay put when the same ontology is drawn
+  // again (reasoner, module, options); a new ontology may bring a sidecar.
+  const layout = file === lastFile && interact ? pinnedOnly(interact.layout()) : null;
   if (file !== lastFile) $("module").value = "";   // a new ontology starts whole
   lastFile = file;
   const flow = $("view").value === "flow";
@@ -54,6 +58,9 @@ async function renderFile(file) {
   fd.append("imports", $("imports").value);
   fd.append("aspect", stageAspect());
   if ($("module").value) fd.append("module", $("module").value);
+  if (layout && Object.keys(layout).length) fd.append("layout_json", JSON.stringify(layout));
+  else if (file !== lastFileSent && $("layoutFile").files[0]) fd.append("layout", $("layoutFile").files[0]);
+  lastFileSent = file;
   if ($("keepUnused").checked) fd.append("keep_unused", "1");
   if ($("reason").checked) fd.append("reason", "auto");
   if ($("definitions").checked) fd.append("definitions", "1");
@@ -215,6 +222,7 @@ function mountSvg(svgText) {
   $("sourcePanel").innerHTML = "";
   interact = OwlUmlInteract.attach(svgEl, {
     onNavigate: centerOn, sourceHost: $("sourcePanel"), edit: editor ? editor.hooks : null,
+    app: true,
   });
   $("source").hidden = !interact.panel();
   editorAttached = !!(editor && editor.attach(svgEl, interact));
@@ -438,6 +446,9 @@ window.addEventListener("DOMContentLoaded", () => {
   $("fit").addEventListener("click", refit);
   $("stretchX").addEventListener("input", () => onStretch("x"));
   $("module").addEventListener("change", () => { if (lastFile) renderFile(lastFile); });
+  $("saveLayout").addEventListener("click", () => {
+    if (interact) interact.saveLayout(`${lastName}.layout.json`);
+  });
   $("stretchY").addEventListener("input", () => onStretch("y"));
   $("download").addEventListener("click", downloadSvg);
   $("clearFocus").addEventListener("click", () => interact && interact.clear());

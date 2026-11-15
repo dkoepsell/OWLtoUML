@@ -70,3 +70,10 @@ function setupModules(data) {
   for (const m of own) add(m.id, `${m.id} (${m.count})`);
   sel.value = keep;
 }
+
+// The pinned entries of a layout (only those are worth sending back).
+function pinnedOnly(layout) {
+  const out = {};
+  for (const [iri, v] of Object.entries(layout || {})) if (v.pinned) out[iri] = v;
+  return out;
+}

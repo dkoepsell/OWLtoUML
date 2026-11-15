@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 
 from .parse import load_graph, parse_ontology, property_view
 from .load import IMPORT_MODES, LOADERS, annotate_model, load
-from . import coverage, modules, reason
+from . import coverage, modules, pinning, reason
 from .aspect import parse_target
 from .postprocess import postprocess
 from .layout import layout
@@ -86,6 +87,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--coverage-out", metavar="FILE",
                     help="where to write the coverage report: what happened to every "
                          "axiom (default: <output>.coverage.json; '-' for none)")
+    lay = ap.add_argument_group("saved layout")
+    lay.add_argument("--layout", metavar="FILE",
+                     help="saved positions to keep (.layout.json sidecar or a layout "
+                          "ontology); default: <input>.layout.json when it exists")
+    lay.add_argument("--save-layout", action="store_true",
+                     help="write every class's position to the sidecar, keeping the "
+                          "pins already in it")
+    lay.add_argument("--layout-in-ontology", action="store_true",
+                     help="also write the layout as annotations in <input>-layout.ttl, "
+                          "an ontology that imports this one (never the ontology itself)")
     mods = ap.add_argument_group("modules")
     mods.add_argument("--view", metavar="module=ID",
                       help="draw one module plus its context (direct superclasses and "
@@ -181,8 +192,15 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-    svg = _render(args, graph, model, cov)
+    try:
+        saved = _saved_layout(args)
+    except (OSError, ValueError) as exc:
+        print(f"error: layout: {exc}", file=sys.stderr)
+        return 1
+    svg = _render(args, graph, model, cov, pinning.pins(saved))
     _write(out, svg)
+    if args.save_layout or args.layout_in_ontology:
+        _store_layout(args, model, svg, saved)
 
     pruned = f", {report['pruned']} unused imported classes left out" if report["pruned"] else ""
     if args.reason != "none":
@@ -236,7 +254,41 @@ def _flow(args, out: str) -> int:
     return 0
 
 
-def _render(args, graph, model, cov) -> str:
+def _saved_layout(args) -> dict:
+    path = args.layout or (str(pinning.sidecar_path(args.input)) if args.input else None)
+    if not path or not os.path.exists(path):
+        if args.layout:
+            raise OSError(f"no such file: {args.layout}")
+        return {}
+    saved = pinning.load(path)
+    print(f"layout: {len(pinning.pins(saved))} pinned classes from {path}", file=sys.stderr)
+    return saved
+
+
+def _store_layout(args, model, svg: str, saved: dict) -> None:
+    """Sidecar with every class's current position (pins kept), and/or the
+    layout ontology."""
+    nodes = {f"n{i}": cid for i, cid in enumerate(model.classes)}
+    now = pinning.from_svg(svg, nodes)
+    for iri, v in saved.items():
+        if v.get("pinned"):
+            now[iri] = v
+    if not args.input:
+        print("warning: --save-layout needs an input file to sit next to", file=sys.stderr)
+        return
+    if args.save_layout:
+        path = args.layout if args.layout and args.layout.endswith(".json") \
+            else str(pinning.sidecar_path(args.input))
+        pinning.save(path, now)
+        print(f"wrote {path}  ({len(now)} positions)", file=sys.stderr)
+    if args.layout_in_ontology:
+        path = args.input.rsplit(".", 1)[0] + "-layout.ttl"
+        pinning.layout_ontology(now, model.ontology_iri).serialize(path, format="turtle")
+        print(f"wrote {path}  (layout ontology importing {model.ontology_iri or 'the input'})",
+              file=sys.stderr)
+
+
+def _render(args, graph, model, cov, pins=None) -> str:
     """SVG for ``model``: Graphviz when available, else the builtin layout."""
     if not (args.engine == "dot" or (args.engine == "auto" and dot_available())):
         print("engine: builtin", file=sys.stderr)
@@ -248,7 +300,7 @@ def _render(args, graph, model, cov) -> str:
                          definitions=args.show_definitions, chains=args.draw_chains,
                          coverage=coverage.summary(cov) if cov else None,
                          aspect=parse_target(args.aspect),
-                         max_rank_width=args.max_rank_width)
+                         max_rank_width=args.max_rank_width, pins=pins)
     lr = model.layout_report
     if lr:
         how = ", ".join(lr["steps"]) or "no change needed"

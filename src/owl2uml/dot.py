@@ -383,7 +383,8 @@ _XLABEL_MIN = 40
 def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
                    source: dict | None = None, definitions: bool = False,
                    chains: bool = False, coverage: dict | None = None,
-                   aspect: float | None = None, max_rank_width: int = 12) -> str:
+                   aspect: float | None = None, max_rank_width: int = 12,
+                   pins: dict[str, tuple] | None = None) -> str:
     """Render with Graphviz.
 
     ``compact_labels``: "auto" (diagrams of 40+ classes), "on", "off". When on,
@@ -417,8 +418,10 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
     if engine == "dot":
         # Compact: rank on the hierarchy only, then route the other lines.
         try:
+            nid = {cid: f"n{i}" for i, cid in enumerate(m.classes)}
+            by_node = {nid[iri]: xy for iri, xy in (pins or {}).items() if iri in nid}
             out = twopass.render(src.decode("utf-8"), dot, graphviz("neato")[0], env,
-                                 _DOT_TIMEOUT_S) or ""
+                                 _DOT_TIMEOUT_S, by_node) or ""
         except (subprocess.TimeoutExpired, ValueError):
             out = ""
     proc = None

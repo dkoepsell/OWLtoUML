@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from owl2uml.parse import parse_ontology, property_view  # noqa: E402
 from owl2uml.load import IMPORT_MODES, LoadError, annotate_model, load  # noqa: E402
 from owl2uml.fetch import FetchError, fetch          # noqa: E402
-from owl2uml import coverage, modules, reason      # noqa: E402
+from owl2uml import coverage, modules, pinning, reason  # noqa: E402
 from owl2uml.postprocess import postprocess       # noqa: E402
 from owl2uml.dot import dot_available, render_dot_svg  # noqa: E402
 from owl2uml.aspect import parse_target               # noqa: E402
@@ -134,6 +134,10 @@ def render():
     except Exception as exc:  # noqa: BLE001
         return jsonify(error=f"parse failed: {exc}"), 400
 
+    try:
+        pins = _pins()
+    except ValueError as exc:
+        return jsonify(error=f"layout: {exc}"), 400
     module_list, chosen = [], request.form.get("module") or ""
     if not properties:
         try:
@@ -164,7 +168,8 @@ def render():
                 except Exception:  # noqa: BLE001 - the diagram matters more
                     src = None
             svg = render_dot_svg(model, source=src, definitions=_flag("definitions"),
-                                 chains=_flag("chains"), coverage=cov, aspect=_aspect())
+                                 chains=_flag("chains"), coverage=cov, aspect=_aspect(),
+                                 pins=pins)
             engine = "graphviz"
         else:
             w, h = layout(model)
@@ -203,6 +208,21 @@ def _aspect():
     except ValueError:
         r = parse_target("auto")
     return min(2.0, max(0.5, r)) if r else None
+
+
+def _pins() -> dict:
+    """Pinned positions from an uploaded .layout.json ("layout") or the page's
+    current drawing ("layout_json")."""
+    raw = request.form.get("layout_json")
+    if not raw and "layout" in request.files and request.files["layout"].filename:
+        raw = request.files["layout"].read().decode("utf-8", "replace")
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except ValueError as exc:
+        raise ValueError(f"not valid JSON ({exc})") from None
+    return pinning.pins(pinning.parse(data))
 
 
 def _flag(name: str) -> bool:

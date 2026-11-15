@@ -41,15 +41,22 @@ def _positions(dot_bin: str, env, skel: str, timeout: float):
 
 
 def render(text: str, dot_bin: str, neato_bin: str | None, env,
-           timeout: float = 45) -> str | None:
+           timeout: float = 45, pins: dict[str, tuple] | None = None) -> str | None:
     """SVG from the two passes, or None when that is not possible (the
-    caller then runs plain `dot`)."""
+    caller then runs plain `dot`). ``pins`` maps node ids to saved (x, y)
+    positions (pinning.py); they replace dot's, and lines touching a pinned
+    node are routed afresh."""
     if not neato_bin:
         return None
     pos = _positions(dot_bin, env, skeleton(text), timeout)
     if not pos:
         return None
     nodes, edges = pos
+    moved = set()
+    for nid, (x, y) in (pins or {}).items():
+        if nid in nodes:
+            nodes[nid] = f"{x:.2f},{y:.2f}"
+            moved.add(nid)
     lines = []
     for ln in text.splitlines():
         m = _NODE.match(ln)
@@ -57,7 +64,8 @@ def render(text: str, dot_bin: str, neato_bin: str | None, env,
             ln = ln.replace("[", f'[pos="{nodes[m.group(1)]}!", ', 1)
         elif " -> " in ln:
             e = _EDGE_ID.search(ln)
-            if e and e.group(1) in edges:
+            ends = {t.strip() for t in ln.split("[", 1)[0].split("->")}
+            if e and e.group(1) in edges and not (ends & moved):
                 ln = ln.replace("[", f'[pos="{edges[e.group(1)]}", ', 1)
         lines.append(ln)
     out = subprocess.run([neato_bin, "-n2", "-Tsvg"], input="\n".join(lines).encode("utf-8"),

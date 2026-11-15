@@ -56,6 +56,7 @@
       </span>
       <span class="sep"></span>
       <button id="open" title="Open another ontology">Open…</button>
+      <button id="saveLayout" title="Save where the classes are (moved ones pinned) as a .layout.json file to keep next to the ontology">Save layout</button>
       <button id="download" title="Download SVG">Download SVG</button>
     </div>
   </header>
@@ -83,6 +84,11 @@
           <input type="url" id="iri" placeholder="https://w3id.org/…/ontology.owl" />
           <button type="submit">Load</button>
         </form>
+        <div class="fmtrow">
+          <label class="smallfile" title="A .layout.json saved earlier: its pinned classes keep their places">
+            Saved layout <input type="file" id="layoutFile" accept=".json" />
+          </label>
+        </div>
         <div class="fmtrow">
           <label for="format">Format</label>
           <select id="format">

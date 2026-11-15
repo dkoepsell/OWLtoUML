@@ -5,7 +5,7 @@ import re
 
 from ..model import HIERARCHY_KINDS, UModel
 
-_LINE = re.compile(r"^(?P<p>.*?)(?: (?P<q>some|only|value|self|min \d+|max \d+|exactly \d+))?"
+_LINE = re.compile(r"^(?P<p>.*?)(?: (?P<q>some|only|∃∀|value|self|min \d+|max \d+|exactly \d+))?"
                    r"(?P<neg> ¬)?(?: \[(?P<mult>[^\]]+)\])?$")
 _BADGE = re.compile(r"\s*[⁻¹↔⁺]+$")
 NOWL_LIB = "https://raw.githubusercontent.com/iofoundry/ontopuml/refs/heads/main/iof.iuml"
@@ -149,6 +149,12 @@ def ontopuml(m: UModel, warnings: list, graph=None) -> str:
                     out.append(f"someCard({rid}, {prop}, {target}, {word}, {n})")
                 elif part["q"] in ("some", "only"):
                     out.append(f"{part['q']}({rid}, {prop}, {target})")
+                elif part["q"] == "∃∀":
+                    # merged on the diagram (spec WS3.5): both restrictions
+                    out.append(f"some({rid}, {prop}, {target})")
+                    out.append(f"subClass({a}, {rid})")
+                    rid = f"r{r}a"
+                    out.append(f"only({rid}, {prop}, {target})")
                 else:
                     warnings.append(f"{part['q'] or 'restriction'} on {prop}: "
                                     "no NOWL macro; written as a comment")

@@ -17,6 +17,7 @@ from . import pinning, twopass
 from .aspect import BAND, SCREEN_BAND, fit
 from .legend import INFERRED_COLOR, legend as _legend
 from .tools import graphviz
+from .profiles.draw import edge_extra, hint_lines
 
 _ROOT = Path(__file__).resolve().parents[2]
 _PREFIX = _ROOT / ".local"
@@ -94,7 +95,7 @@ _DEPRECATED = "#9a968c"
 _DEF_WRAP = 34
 
 
-def _label(c: UClass, color: str = "", definitions: bool = False) -> str:
+def _label(c: UClass, color: str = "", definitions: bool = False, badge: bool = True) -> str:
     """HTML-like table label for one UML class box (PlantUML-style)."""
     color = color or _ICON_BG
     header_bg = _HEADER_BG if color.lower() == _ICON_BG.lower() else tint(color)
@@ -123,7 +124,7 @@ def _label(c: UClass, color: str = "", definitions: bool = False) -> str:
         '<td width="6"></td>'
         f'<td valign="middle">{title}</td>'
         '</tr></table>'
-    )
+    ) if badge else title
     rows = [
         f'<table border="1" color="{_BORDER}" cellborder="0" cellspacing="0" '
         f'cellpadding="6" bgcolor="{_BODY_BG}">',
@@ -154,7 +155,7 @@ _ANON_STYLE = {
 
 
 def _node(nid: str, cid: str, c: UClass, color: str, gcls: str, defcls: str,
-          definitions: bool) -> str:
+          definitions: bool, badge: bool = True) -> str:
     """One DOT node statement for a class, an anonymous expression or an individual."""
     if c.kind in _ANON_STYLE:
         ink, tip = _ANON_STYLE[c.kind]
@@ -171,7 +172,7 @@ def _node(nid: str, cid: str, c: UClass, color: str, gcls: str, defcls: str,
     extra = " anon" if c.kind == "enumeration" else ""
     extra += " deprecated" if c.deprecated else ""
     extra += " context" if c.context else ""
-    return (f'  {nid} [label=<{_label(c, color, definitions)}>, tooltip="{_attr(cid)}", '
+    return (f'  {nid} [label=<{_label(c, color, definitions, badge)}>, tooltip="{_attr(cid)}", '
             f'id="{nid}", class="uml-class{gcls}{defcls}{extra}"];')
 
 
@@ -210,6 +211,7 @@ def _slug(name: str) -> str:
 
 BACKGROUND = "#f7f5ef"
 NODESEP, RANKSEP = 0.3, 0.55   # inches between boxes / ranks: compact by default
+LABEL_WIDTH = 22               # characters per line label line (spec WS3.5)
 
 
 def _apply_layout(lines: list[str], layout) -> None:
@@ -251,10 +253,18 @@ def _apply_layout(lines: list[str], layout) -> None:
 
 def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
            definitions: bool = False, chains: bool = False,
-           coverage: dict | None = None, layout=None, compact_key: bool = False) -> str:
+           coverage: dict | None = None, layout=None, compact_key: bool = False,
+           label_width: int = LABEL_WIDTH) -> str:
     """``definitions``: definition text under each class name
     (--show-definitions). ``chains``: property chains added to line labels
-    (--draw-chains)."""
+    (--draw-chains). ``label_width``: wrap line labels at this many
+    characters (--label-width)."""
+    badge = not m.render.get("hide_class_badge")
+
+    def wrap(text: str) -> str:
+        return "\n".join(w for ln in text.split("\n") for w in _wrap(ln, label_width)) \
+            if label_width and text else text
+
     # Curved splines look best for small diagrams; straight lines scale.
     splines = "true" if len(m.classes) <= _SPLINE_LIMIT else "line"
     # sfdp ignores rankdir/ranksep; overlap removal keeps boxes from stacking.
@@ -275,14 +285,14 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
         nid = f"n{i}"
         ids[cid] = nid
         g = groups.get(c.group)
-        color = g.color if g else ""
+        color = c.color or (g.color if g else "")
         gcls = f" grp-{_slug(c.group)}" if c.group else ""
         defcls = (" defined" if c.defined else "") + \
                  (" inferred-placed" if c.inferred_placed else "") + \
                  (" unsatisfiable" if c.unsatisfiable else "")
         # id/class are copied onto the SVG <g>, giving the browser-side
         # interaction script (webapp/static/interact.js) stable hooks.
-        lines.append(_node(nid, cid, c, color, gcls, defcls, definitions))
+        lines.append(_node(nid, cid, c, color, gcls, defcls, definitions, badge))
 
     for i, e in enumerate(m.edges):
         if e.src not in ids or e.dst not in ids:
@@ -296,7 +306,8 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
                   if e.genset else f', label="{_attr(e.label)}"' if e.label else "")
             lines.append(
                 f'  {s} -> {d} [arrowhead=empty, color="#33312e", penwidth=1.2{gs}, '
-                f'id="e{i}", class="rel-generalization", tooltip="subclass of"];'
+                f'id="e{i}", class="rel-generalization", '
+                f'tooltip="subclass of{_attr(" (" + e.note + ")") if e.note else ""}"];'
             )
         elif e.kind == "disjoint":
             lbl = f', label="{_attr(e.label)}", fontcolor="#c0392b"' if e.label else ""
@@ -341,20 +352,29 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
             )
         else:
             restriction = e.kind == "restriction"
-            text = e.label
+            text = wrap(e.label)
             if chains:
                 extra = [f"⊒ {c}" for p in e.props for c in m.properties.get(p, {}).get("chains", [])]
                 text = "\n".join([text] + extra) if extra else text
             # Merged relations: one per line (DOT "\n" escape, not a raw newline).
             key = "xlabel" if xlabels else "label"
             lbl = f', {key}="{_attr(text).replace(chr(10), chr(92) + "n")}"' if text else ""
-            tip = _attr((e.label or e.kind).replace(chr(10), "; "))
+            tip = _attr((e.label or e.kind).replace(chr(10), "; ")
+                        + (f" / {e.tail_label}" if e.tail_label else "").replace(chr(10), "; "))
             style = ", style=dashed" if restriction else ""
+            ink = e.color or "#3a5a8c"
+            if e.tail_label:
+                # inverse_merged: P at the target end, its inverse at the source end
+                lbl = (f', headlabel="{_attr(wrap(e.label)).replace(chr(10), chr(92) + "n")}", '
+                       f'taillabel="{_attr(wrap(e.tail_label)).replace(chr(10), chr(92) + "n")}", '
+                       f'labelfontcolor="{ink}", labelfontsize=10, labeldistance=2')
+                mult = ""
             lines.append(
-                f'  {s} -> {d} [arrowhead=vee, color="#3a5a8c", '
-                f"fontcolor=\"#3a5a8c\", constraint=false{style}{lbl}{mult}, "
+                f'  {s} -> {d} [arrowhead=vee, color="{ink}"{edge_extra(e)}, '
+                f"fontcolor=\"{ink}\", constraint=false{style}{lbl}{mult}, "
                 f'id="e{i}", class="rel-{_attr(e.kind)}", tooltip="{tip}"];'
             )
+    lines += hint_lines(m, ids)
     if layout:
         _apply_layout(lines, layout)
     special = any(e.kind in ("inferred", "disjoint", "member") or e.genset for e in m.edges) or \
@@ -388,7 +408,7 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
                    chains: bool = False, coverage: dict | None = None,
                    aspect: float | None = None, max_rank_width: int = 12,
                    pins: dict[str, tuple] | None = None, for_print: bool = False,
-                   screen: bool = False) -> str:
+                   screen: bool = False, label_width: int = LABEL_WIDTH) -> str:
     """``screen``: fit a browser window (up to 3:1) rather than a figure (2:1)."""
     """Render with Graphviz.
 
@@ -406,7 +426,8 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
 
     def text(layout=None) -> str:
         return to_dot(m, legend=legend, xlabels=compact, definitions=definitions,
-                      chains=chains, coverage=coverage, layout=layout, compact_key=for_print)
+                      chains=chains, coverage=coverage, layout=layout, compact_key=for_print,
+                      label_width=label_width)
 
     layout = None
     m.layout_report = {}

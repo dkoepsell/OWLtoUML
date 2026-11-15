@@ -89,43 +89,56 @@ def _members(g: Graph, node, pred) -> list:
         return []
 
 
-def _prop_name(g: Graph, p, labels) -> str:
-    """Readable name for a restriction's property, including owl:inverseOf."""
-    if isinstance(p, BNode):
-        inv = g.value(p, OWL.inverseOf)
-        return f"inverse {_display(inv, labels)}" if inv is not None else ""
-    return _display(p, labels)
+def _named_inverse(g: Graph, p):
+    """The property declared owl:inverseOf ``p`` (either direction), or None."""
+    q = g.value(p, OWL.inverseOf)
+    if isinstance(q, URIRef):
+        return q
+    q = g.value(predicate=OWL.inverseOf, object=p)
+    return q if isinstance(q, URIRef) else None
 
 
 def _restriction(g: Graph, r, labels):
-    """(property name, quantifier, filler, property IRI) for an owl:Restriction,
-    or None. The name carries characteristic badges (constructs.badges)."""
+    """(property name, quantifier, filler, property IRI, reversed) for an
+    owl:Restriction, or None. The name carries characteristic badges
+    (constructs.badges).
+
+    ``ObjectInverseOf(P)`` (spec WS3.5): when P has a named inverse Q, the
+    restriction is drawn as Q in the forward direction; otherwise the line is
+    reversed and labelled P -- never "inverse P"."""
     prop = g.value(r, OWL.onProperty)
     if prop is None:
         return None
-    pname = _prop_name(g, prop, labels)
-    named = prop if isinstance(prop, URIRef) else g.value(prop, OWL.inverseOf)
-    pname += badges(g, named)
-    piri = str(named) if isinstance(named, URIRef) else ""
+    rev = False
+    named = prop
+    if isinstance(prop, BNode):
+        inv = g.value(prop, OWL.inverseOf)
+        if not isinstance(inv, URIRef):
+            return None
+        named = _named_inverse(g, inv)
+        if named is None:
+            named, rev = inv, True
+    pname = _display(named, labels) + badges(g, named)
+    piri = str(named)
     for pred, q in ((OWL.someValuesFrom, "some"), (OWL.allValuesFrom, "only")):
         filler = g.value(r, pred)
         if filler is not None:
-            return pname, q, filler, piri
+            return pname, q, filler, piri, rev
     for pred, q in ((OWL.minQualifiedCardinality, "min"), (OWL.maxQualifiedCardinality, "max"),
                     (OWL.qualifiedCardinality, "exactly")):
         n = g.value(r, pred)
         if n is not None:
-            return pname, f"{q} {n}", g.value(r, OWL.onClass) or g.value(r, OWL.onDataRange), piri
+            return pname, f"{q} {n}", g.value(r, OWL.onClass) or g.value(r, OWL.onDataRange), piri, rev
     for pred, q in ((OWL.minCardinality, "min"), (OWL.maxCardinality, "max"),
                     (OWL.cardinality, "exactly")):
         n = g.value(r, pred)
         if n is not None:
-            return pname, f"{q} {n}", None, piri
+            return pname, f"{q} {n}", None, piri, rev
     v = g.value(r, OWL.hasValue)
     if v is not None:
-        return pname, "value", v, piri
+        return pname, "value", v, piri, rev
     if g.value(r, OWL.hasSelf) is not None:
-        return pname, "self", None, piri
+        return pname, "self", None, piri, rev
     return None
 
 
@@ -219,7 +232,7 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
         return nid
 
     def add_target(cid: str, t, kind: str, label: str = "", mult: str = "",
-                   props: list | None = None) -> None:
+                   props: list | None = None, reverse: bool = False) -> None:
         """Line from class ``cid`` to ``t``: a named class, an individual,
         or an anonymous ⊔ / ¬ / {oneOf} expression."""
         if isinstance(t, URIRef):
@@ -238,7 +251,8 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
                 return
         else:
             return
-        m.edges.append(Edge(src=cid, dst=tid, kind=kind, label=label, multiplicity=mult,
+        src, dst = (tid, cid) if reverse else (cid, tid)
+        m.edges.append(Edge(src=src, dst=dst, kind=kind, label=label, multiplicity=mult,
                             props=props or []))
 
     def expr_node(cid: str, e) -> str | None:
@@ -309,7 +323,7 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
         res = _restriction(g, expr, labels)
         if res is None:
             return
-        pname, q, filler, piri = res
+        pname, q, filler, piri, rev = res
         props = [piri] if piri else []
         if q == "self":
             m.edges.append(Edge(src=cid, dst=cid, kind="self", label=f"{pname} self",
@@ -332,14 +346,14 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
             comp = g.value(filler, OWL.complementOf)
             if comp is not None and isinstance(comp, URIRef):
                 # "p some (not B)": a ¬ badge on the label, the line to B
-                add_target(cid, comp, "restriction", f"{label} ¬", mult, props)
+                add_target(cid, comp, "restriction", f"{label} ¬", mult, props, rev)
                 return
             if _members(g, filler, OWL.intersectionOf) or _members(g, filler, OWL.unionOf):
                 # one line per named member keeps restrictions compact
                 for t in _named_fillers(g, filler):
-                    add_target(cid, t, "restriction", label, mult, props)
+                    add_target(cid, t, "restriction", label, mult, props, rev)
                 return
-        add_target(cid, filler, "restriction", label, mult, props)
+        add_target(cid, filler, "restriction", label, mult, props, rev)
 
     for sub, sup in g.subject_objects(RDFS.subClassOf):
         if isinstance(sub, URIRef) and isinstance(sup, BNode):

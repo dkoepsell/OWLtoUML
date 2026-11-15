@@ -147,6 +147,14 @@
             <option value="flow">Flow (processes)</option>
             <option value="properties">Properties (hierarchy)</option>
           </select>
+          <label for="profile" title="Draw in a domain's own notation: BFO bands and bearer rows, the Hohfeld square, fewer labels (every axiom stays in the source panel)">Notation</label>
+          <select id="profile">
+            <option value="none">plain UML</option>
+            <option value="auto">auto (from the ontology)</option>
+            <option value="core">core</option>
+            <option value="bfo">BFO</option>
+            <option value="bfo,legal">BFO + legal (LOF)</option>
+          </select>
         </div>
         <div class="fmtrow flowfiles" id="flowfiles" hidden>
           <label class="smallfile" title="Instances of the process steps: an event log written as RDF">

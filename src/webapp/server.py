@@ -19,7 +19,8 @@ from owl2uml.parse import parse_ontology, property_view  # noqa: E402
 from owl2uml.load import IMPORT_MODES, LoadError, annotate_model, load  # noqa: E402
 from owl2uml.fetch import FetchError, fetch          # noqa: E402
 from owl2uml import coverage, modules, pinning, reason  # noqa: E402
-from owl2uml.postprocess import postprocess       # noqa: E402
+from owl2uml.postprocess import postprocess
+from owl2uml.profiles import label_count       # noqa: E402
 from owl2uml.dot import dot_available, render_dot_svg  # noqa: E402
 from owl2uml.aspect import parse_target               # noqa: E402
 from owl2uml.layout import layout                  # noqa: E402
@@ -39,6 +40,22 @@ LOAD_TIMEOUT = float(os.environ.get("LOAD_TIMEOUT_S", "60"))
 
 
 @app.errorhandler(413)
+
+def _profile(names: str, graph):
+    """Notation profile from the form: 'none', 'auto', or bundled names."""
+    from owl2uml.profiles import available, detect, load
+    if names == "auto":
+        return load(",".join(detect(graph)), graph)
+    names = [n for n in names.split(",") if n in available()]   # bundled ones only
+    return load(",".join(names), graph) if names else None
+
+
+def _int_form(key: str, default: int, lo: int, hi: int) -> int:
+    try:
+        return max(lo, min(hi, int(request.form.get(key, default))))
+    except (TypeError, ValueError):
+        return default
+
 def too_large(_exc):
     return jsonify(error=f"the upload is larger than the {_max_mb} MB limit"), 413
 
@@ -128,7 +145,11 @@ def render():
         reason.apply(model, inf)
         # "keep_unused=1" keeps imported upper-level classes the ontology
         # never reaches (left out by default).
-        report = postprocess(model, prune=request.form.get("keep_unused") not in ("1", "true", "on"))
+        prof = None
+        if not properties:
+            prof = _profile(request.form.get("profile") or "none", graph)
+        report = postprocess(model, prune=request.form.get("keep_unused") not in ("1", "true", "on"),
+                             profile=prof, graph=graph)
     except LoadError as exc:
         return jsonify(error=str(exc), syntax=exc.syntax, line=exc.line), 400
     except Exception as exc:  # noqa: BLE001
@@ -170,7 +191,8 @@ def render():
             for_print = request.form.get("fmt") in ("svg-static", "pdf", "png", "tikz")
             svg = render_dot_svg(model, source=src, definitions=_flag("definitions"),
                                  chains=_flag("chains"), coverage=cov, aspect=_aspect(),
-                                 pins=pins, for_print=for_print, screen=True)
+                                 pins=pins, for_print=for_print, screen=True,
+                                 label_width=_int_form("label_width", 22, 0, 80))
             engine = "graphviz"
         else:
             w, h = layout(model)
@@ -187,6 +209,8 @@ def render():
         classes=len(model.classes),
         edges=len(model.edges),
         pruned=report["pruned"],
+        profile=dict(report.get("profile") or {}, labels=label_count(model))
+        if report.get("profile") else None,
         reasoning=inf.report(),
         edits=edit_report,
         loader=loaded.report(),

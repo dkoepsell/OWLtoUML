@@ -1,0 +1,66 @@
+@prefix : <https://w3id.org/lof/> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix o2u: <https://w3id.org/owl2uml/ns#> .
+
+# A small LOF-like ontology for the notation profiles (spec WS3).
+<https://w3id.org/lof/test.owl> a owl:Ontology .
+
+obo:BFO_0000001 a owl:Class ; rdfs:label "entity" .
+obo:BFO_0000002 a owl:Class ; rdfs:label "continuant" ; rdfs:subClassOf obo:BFO_0000001 .
+obo:BFO_0000003 a owl:Class ; rdfs:label "occurrent" ; rdfs:subClassOf obo:BFO_0000001 .
+obo:BFO_0000020 a owl:Class ; rdfs:label "specifically dependent continuant" ; rdfs:subClassOf obo:BFO_0000002 .
+obo:BFO_0000004 a owl:Class ; rdfs:label "independent continuant" ; rdfs:subClassOf obo:BFO_0000002 .
+obo:BFO_0000040 a owl:Class ; rdfs:label "material entity" ; rdfs:subClassOf obo:BFO_0000004 .
+obo:BFO_0000015 a owl:Class ; rdfs:label "process" ; rdfs:subClassOf obo:BFO_0000003 .
+
+obo:BFO_0000197 a owl:ObjectProperty ; rdfs:label "inheres in" .
+:ODP003_0001100 a owl:ObjectProperty, owl:FunctionalProperty ; rdfs:label "held by" ;
+    rdfs:subPropertyOf obo:BFO_0000197 .
+:ODP003_0001102 a owl:ObjectProperty, owl:SymmetricProperty ; rdfs:label "correlative of" .
+:ODP001_0001103 a owl:ObjectProperty ; rdfs:label "gives rise to" ; owl:inverseOf :ODP001_0001104 .
+:ODP001_0001104 a owl:ObjectProperty ; rdfs:label "arises from" .
+:ODP003_0001103 a owl:ObjectProperty ; rdfs:label "exercised in" ;
+    rdfs:domain :ODP003_0001005 ; rdfs:range :ODP001_0001000 .
+:ODP009_0001100 a owl:ObjectProperty ; rdfs:label "on behalf of" ; o2u:style "hidden" .
+:ODP002_0001100 a owl:ObjectProperty ; rdfs:label "confers" .
+
+:ODP009_0001003 a owl:Class ; rdfs:label "legal person" ; rdfs:subClassOf obo:BFO_0000040 .
+:ODP001_0001000 a owl:Class ; rdfs:label "legal act" ; rdfs:subClassOf obo:BFO_0000015 ,
+    [ a owl:Restriction ; owl:onProperty :ODP001_0001103 ; owl:someValuesFrom :ODP003_0001000 ] .
+:ODP003_0001000 a owl:Class ; rdfs:label "legal position" ; rdfs:subClassOf obo:BFO_0000020 ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001100 ; owl:someValuesFrom :ODP009_0001003 ] ,
+    [ a owl:Restriction ; owl:onProperty :ODP001_0001104 ; owl:someValuesFrom :ODP001_0001000 ] ,
+    [ a owl:Restriction ; owl:onProperty :ODP009_0001100 ; owl:someValuesFrom :ODP009_0001003 ] ,
+    # ObjectInverseOf(confers): no named inverse, so the arrow is reversed
+    [ a owl:Restriction ; owl:onProperty [ owl:inverseOf :ODP002_0001100 ] ;
+      owl:someValuesFrom :ODP001_0001000 ] .
+:ODP003_0001009 a owl:Class ; rdfs:label "first-order legal position" ; rdfs:subClassOf :ODP003_0001000 .
+:ODP003_0001010 a owl:Class ; rdfs:label "second-order legal position" ; rdfs:subClassOf :ODP003_0001000 .
+
+# Hohfeld's eight positions; each is correlative of its pair (some and only).
+:ODP003_0001001 a owl:Class ; rdfs:label "claim" ; rdfs:subClassOf :ODP003_0001009 ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:someValuesFrom :ODP003_0001002 ] ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:allValuesFrom :ODP003_0001002 ] .
+:ODP003_0001002 a owl:Class ; rdfs:label "duty" ; rdfs:subClassOf :ODP003_0001009 ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:someValuesFrom :ODP003_0001001 ] ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:allValuesFrom :ODP003_0001001 ] .
+:ODP003_0001003 a owl:Class ; rdfs:label "liberty" ; rdfs:subClassOf :ODP003_0001009 ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:someValuesFrom :ODP003_0001004 ] ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:allValuesFrom :ODP003_0001004 ] .
+:ODP003_0001004 a owl:Class ; rdfs:label "no-claim" ; rdfs:subClassOf :ODP003_0001009 ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:someValuesFrom :ODP003_0001003 ] ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:allValuesFrom :ODP003_0001003 ] .
+:ODP003_0001005 a owl:Class ; rdfs:label "power" ; rdfs:subClassOf :ODP003_0001010 ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:someValuesFrom :ODP003_0001006 ] ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:allValuesFrom :ODP003_0001006 ] .
+:ODP003_0001006 a owl:Class ; rdfs:label "liability" ; rdfs:subClassOf :ODP003_0001010 ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:someValuesFrom :ODP003_0001005 ] ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:allValuesFrom :ODP003_0001005 ] .
+:ODP003_0001007 a owl:Class ; rdfs:label "immunity" ; rdfs:subClassOf :ODP003_0001010 ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:someValuesFrom :ODP003_0001008 ] ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:allValuesFrom :ODP003_0001008 ] .
+:ODP003_0001008 a owl:Class ; rdfs:label "disability" ; rdfs:subClassOf :ODP003_0001010 ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:someValuesFrom :ODP003_0001007 ] ,
+    [ a owl:Restriction ; owl:onProperty :ODP003_0001102 ; owl:allValuesFrom :ODP003_0001007 ] .

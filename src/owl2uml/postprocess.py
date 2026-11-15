@@ -215,13 +215,15 @@ def merge_edges(m: UModel) -> None:
             continue
         if e.kind == "generalization" and (e.src, e.dst) in defined:
             continue
-        key = (e.src, e.dst, e.kind, e.genset)
+        key = (e.src, e.dst, e.kind, e.genset, e.style, e.color)
         prev = merged.get(key)
         if prev is None:
             merged[key] = e
             out.append(e)
             continue
         prev.props = sorted(set(prev.props) | set(e.props))
+        if e.note and e.note not in prev.note.split("; "):
+            prev.note = f"{prev.note}; {e.note}" if prev.note else e.note
         prev.axioms = sorted(set(prev.axioms) | set(e.axioms))
         if prev.multiplicity or e.multiplicity:
             # one line, several restrictions: multiplicities go into the labels
@@ -232,7 +234,26 @@ def merge_edges(m: UModel) -> None:
         if e.label and e.label not in prev.label.split("\n"):
             prev.label = "\n".join(sorted(prev.label.split("\n") + [e.label], key=str.lower)) \
                 if prev.label else e.label
+    for e in out:
+        if "\n" in e.label:
+            e.label = merge_quantifiers(e.label)
     m.edges = out
+
+
+def merge_quantifiers(label: str) -> str:
+    """'p some' and 'p only' on one line become 'p ∃∀' (spec WS3.5)."""
+    lines = label.split("\n")
+    both = {ln[:-5] for ln in lines if ln.endswith(" some")} & \
+        {ln[:-5] for ln in lines if ln.endswith(" only")}
+    out = []
+    for ln in lines:
+        base = ln[:-5] if ln.endswith((" some", " only")) else None
+        if base in both:
+            if f"{base} ∃∀" not in out:
+                out.append(f"{base} ∃∀")
+        else:
+            out.append(ln)
+    return "\n".join(out)
 
 
 def order_for_layout(m: UModel) -> None:
@@ -274,10 +295,26 @@ def order_for_layout(m: UModel) -> None:
     m.classes = {cid: m.classes[cid] for cid in order}
 
 
-def postprocess(m: UModel, prune: bool = True) -> dict:
-    """Run all steps; return a small report for the CLI/web UI."""
+def postprocess(m: UModel, prune: bool = True, profile=None, graph=None,
+                show_bfo: str = "stub") -> dict:
+    """Run all steps; return a small report for the CLI/web UI.
+
+    ``profile`` (profiles.Profile) with the ontology ``graph``: draw in that
+    notation (spec WS3). ``show_bfo="full"`` keeps pass-through BFO classes."""
     assign_groups(m)
     removed = prune_unused(m) if prune else 0
-    merge_edges(m)
+    if profile is not None and graph is not None:
+        from .profiles import apply, finish
+        apply(m, profile, graph)
+        merge_edges(m)
+        finish(m, profile, graph, show_bfo)
+    else:
+        merge_edges(m)
     order_for_layout(m)
-    return {"pruned": removed}
+    report = {"pruned": removed}
+    if m.render.get("profiles"):
+        report["profile"] = {k: (len(v) if isinstance(v, list) else v)
+                             for k, v in m.render.items()
+                             if k in ("profiles", "hidden", "compartments", "stubbed")}
+        report["profile"]["profiles"] = m.render["profiles"]
+    return report

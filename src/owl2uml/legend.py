@@ -65,6 +65,7 @@ def legend(m: UModel, coverage: dict | None = None, compact: bool = False) -> st
         extra += '<br/><font color="#6b675e">grey, struck-through: deprecated</font>'
     if any(c.kind == "individual" for c in m.classes.values()):
         extra += '<br/>underlined box: an individual (value)'
+    rows += _profile_rows(m)
     if not compact:
         rows += _property_rows(m)
         rows += _coverage_rows(coverage)
@@ -81,6 +82,36 @@ def legend(m: UModel, coverage: dict | None = None, compact: bool = False) -> st
 
 
 _MAX_PROPERTY_ROWS = 12
+
+
+def _profile_rows(m: UModel) -> list[str]:
+    """What the notation profile (profiles/) changed: coloured lines named
+    here instead of on the line, and the other styles in use."""
+    r = m.render or {}
+    if not r.get("profiles"):
+        return []
+    rows = [f'<tr><td colspan="2" align="left"><b>Notation</b> <font point-size="10">'
+            f'{_h(", ".join(r["profiles"]))} profile</font></td></tr>']
+    for _p, (ink, text) in sorted((r.get("keyed") or {}).items(), key=lambda kv: kv[1][1].lower()):
+        rows.append(f'<tr><td bgcolor="{ink}" width="14" height="3"> </td>'
+                    f'<td align="left"><font point-size="10">{_h(text)}</font></td></tr>')
+    notes = []
+    if r.get("compartments"):
+        notes.append("row “p: B” in a box: the class is related to B by p")
+    if any(e.style == "symmetric_pair" for e in m.edges):
+        notes.append("line without arrowheads: a symmetric relation")
+    if any(e.tail_label for e in m.edges):
+        notes.append("arrows at both ends: a property and its inverse")
+    if r.get("stubbed"):
+        notes.append(f"{len(r['stubbed'])} BFO classes between a class and its "
+                     "superclass are skipped (hover a line)")
+    if r.get("motifs"):
+        notes.append("Hohfeld square: correlatives side by side, opposites diagonal"
+                     if any(x["name"] == "hohfeld" for x in r["motifs"]) else "fixed motifs")
+    if notes:
+        rows.append('<tr><td></td><td align="left" balign="left"><font point-size="10">'
+                    + "<br/>".join(_h(n) for n in notes) + "</font></td></tr>")
+    return rows
 
 
 def _property_rows(m: UModel) -> list[str]:

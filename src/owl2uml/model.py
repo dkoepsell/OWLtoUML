@@ -78,6 +78,13 @@ class Edge:
     genset: str = ""         # generalization set id (DisjointUnion): one shared arrowhead
     props: list[str] = field(default_factory=list)   # property IRIs behind the label
     axioms: list[str] = field(default_factory=_current)  # ids of the axioms drawn
+    # notation profile (profiles/): "" directed, "symmetric_pair",
+    # "inverse_merged", "collapsed" (a BFO stub chain); colour override;
+    # the inverse property's name at the source end (inverse_merged)
+    style: str = ""
+    color: str = ""
+    tail_label: str = ""
+    note: str = ""           # extra tooltip text
 
 
 @dataclass
@@ -98,6 +105,7 @@ class UClass:
     axioms: list[str] = field(default_factory=list)  # axioms shown on the box itself
     module: str = ""              # modules.assign
     context: bool = False         # module view: shown for context only (greyed)
+    color: str = ""               # notation profile: overrides the group colour
 
     # filled in by the layout pass
     x: float = 0.0
@@ -139,6 +147,9 @@ class UModel:
     modules: dict[str, dict] = field(default_factory=dict)   # modules.assign
     layout_report: dict = field(default_factory=dict)
     layout_origin: tuple = (0.0, 0.0)   # pinning.origin of the last rendering
+    # notation profile hints for the renderer (profiles.apply): bands,
+    # lanes, motifs, hide_class_badge, fixed (classes aspect.fit must not move)
+    render: dict = field(default_factory=dict)
     drawing: dict = field(default_factory=dict)   # dot.render_dot_svg: program + positioned DOT  # aspect.fit: ratio and steps
 
     def cls(self, cid: str, name: str | None = None) -> UClass:

@@ -11,10 +11,19 @@ from .load import IMPORT_MODES, LOADERS, annotate_model, load
 from . import coverage, modules, pinning, reason
 from .aspect import parse_target
 from .postprocess import postprocess
+from .profiles import label_count
 from .layout import layout
 from .render import render_svg
 from .dot import dot_available, render_dot_svg
 from .source import build_source, inline_viewer
+
+
+def _profile(names: str, graph):
+    """--profile: None for 'none', the detected profiles for 'auto'."""
+    from .profiles import detect, load
+    if not names or names == "none":
+        return None
+    return load(",".join(detect(graph)) if names == "auto" else names, graph)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -49,6 +58,15 @@ def main(argv: list[str] | None = None) -> int:
                     default="auto",
                     help="layout engine: 'dot' (graphviz, scalable), 'builtin' "
                          "(pure-python), or 'auto' (dot if available)")
+    ap.add_argument("--profile", default="none", metavar="NAMES",
+                    help="notation profiles, composed left to right: bundled names "
+                         "(core, bfo, legal), YAML/JSON files, or 'auto' to pick from "
+                         "the ontology (default: none)")
+    ap.add_argument("--show-bfo", choices=("stub", "full"), default="stub",
+                    help="with the bfo profile: 'full' keeps BFO classes that only "
+                         "pass the hierarchy through (default: stub)")
+    ap.add_argument("--label-width", type=int, default=22, metavar="N",
+                    help="wrap line labels at N characters (0: never; default 22)")
     ap.add_argument("--keep-unused", action="store_true",
                     help="keep imported upper-level classes (e.g. BFO) that the "
                          "ontology's own classes never reach; by default they are "
@@ -155,7 +173,18 @@ def main(argv: list[str] | None = None) -> int:
 
     inf = reason.classify(graph, args.reason if not args.property_view else "none")
     reason.apply(model, inf)
-    report = postprocess(model, prune=not args.keep_unused)
+    try:
+        prof = _profile(args.profile, graph) if not args.property_view else None
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    report = postprocess(model, prune=not args.keep_unused, profile=prof, graph=graph,
+                         show_bfo=args.show_bfo)
+    if report.get("profile"):
+        pr = report["profile"]
+        print(f"profile: {', '.join(pr['profiles'])}: {pr.get('compartments', 0)} lines as "
+              f"compartments, {pr.get('hidden', 0)} hidden, {pr.get('stubbed', 0)} BFO "
+              f"classes stubbed; {label_count(model)} line labels", file=sys.stderr)
 
     if not model.classes:
         print("warning: no classes found in ontology; producing empty diagram",
@@ -357,7 +386,8 @@ def _render(args, graph, model, cov, pins=None, for_print=False) -> str:
                          definitions=args.show_definitions, chains=args.draw_chains,
                          coverage=coverage.summary(cov) if cov else None,
                          aspect=parse_target(args.aspect),
-                         max_rank_width=args.max_rank_width, pins=pins, for_print=for_print)
+                         max_rank_width=args.max_rank_width, pins=pins, for_print=for_print,
+                         label_width=args.label_width)
     lr = model.layout_report
     if lr:
         how = ", ".join(lr["steps"]) or "no change needed"

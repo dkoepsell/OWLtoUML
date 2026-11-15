@@ -1,0 +1,48 @@
+# Basic Formal Ontology (BFO 2020, ISO/IEC 21838-2).
+profile: bfo
+extends: core
+bfo_stub: true            # collapse pass-through BFO classes (--show-bfo full keeps them)
+
+# RO and BFO 2.0 relation IRIs -> the BFO 2020 relation they stand for, so
+# rules written for BFO 2020 also match ontologies that use the older IRIs.
+aliases:
+  "http://purl.obolibrary.org/obo/RO_0000052": "http://purl.obolibrary.org/obo/BFO_0000197"  # inheres in
+  "http://purl.obolibrary.org/obo/RO_0000053": "http://purl.obolibrary.org/obo/BFO_0000196"  # bearer of
+  "http://purl.obolibrary.org/obo/RO_0000056": "http://purl.obolibrary.org/obo/BFO_0000056"  # participates in
+  "http://purl.obolibrary.org/obo/RO_0000057": "http://purl.obolibrary.org/obo/BFO_0000057"  # has participant
+  "http://purl.obolibrary.org/obo/RO_0000058": "http://purl.obolibrary.org/obo/BFO_0000058"  # is concretized as
+  "http://purl.obolibrary.org/obo/RO_0000059": "http://purl.obolibrary.org/obo/BFO_0000059"  # concretizes
+  "http://purl.obolibrary.org/obo/RO_0000080": "http://purl.obolibrary.org/obo/BFO_0000197"  # quality of
+  "http://purl.obolibrary.org/obo/RO_0000081": "http://purl.obolibrary.org/obo/BFO_0000197"  # role of
+  "http://purl.obolibrary.org/obo/RO_0000079": "http://purl.obolibrary.org/obo/BFO_0000197"  # function of
+  "http://purl.obolibrary.org/obo/RO_0000086": "http://purl.obolibrary.org/obo/BFO_0000196"  # has quality
+  "http://purl.obolibrary.org/obo/RO_0000087": "http://purl.obolibrary.org/obo/BFO_0000196"  # has role
+  "http://purl.obolibrary.org/obo/RO_0000085": "http://purl.obolibrary.org/obo/BFO_0000196"  # has function
+  "http://purl.obolibrary.org/obo/RO_0000091": "http://purl.obolibrary.org/obo/BFO_0000196"  # has disposition
+  "http://purl.obolibrary.org/obo/BFO_0000050": "http://purl.obolibrary.org/obo/BFO_0000176"  # part of (2.0)
+  "http://purl.obolibrary.org/obo/BFO_0000051": "http://purl.obolibrary.org/obo/BFO_0000178"  # has part (2.0)
+  "http://purl.obolibrary.org/obo/RO_0002350": "http://purl.obolibrary.org/obo/BFO_0000129"  # member of
+  "http://purl.obolibrary.org/obo/RO_0002351": "http://purl.obolibrary.org/obo/BFO_0000115"  # has member
+
+relation_styles:
+  # dependence, compactly: a dependent continuant lists its bearer in its box
+  - match: {property: "http://purl.obolibrary.org/obo/BFO_0000197", subproperties: true}
+    style: compartment
+  - match: {property: "http://purl.obolibrary.org/obo/BFO_0000197"}   # inheres in
+    style: compartment
+    label: bearer
+  # lines to upper-level BFO classes cross the whole figure to say little:
+  # a row in the class box instead (still in the source panel)
+  - match: {target: upper}
+    style: compartment
+  # domain -> range of a property: a typed row in the domain class (UML
+  # attribute notation) rather than a second line beside the restrictions
+  - match: {kind: association}
+    style: compartment
+
+class_styles:
+  # two horizontal bands: continuants above, occurrents below
+  - match: {subclass_of: "http://purl.obolibrary.org/obo/BFO_0000002"}
+    band: continuant
+  - match: {subclass_of: "http://purl.obolibrary.org/obo/BFO_0000003"}
+    band: occurrent

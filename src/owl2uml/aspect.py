@@ -109,9 +109,11 @@ def stagger_leaves(m: UModel, ids: dict[str, str]) -> dict[int, int]:
 def sibling_trees(m: UModel, ids: dict[str, str], width: int) -> list:
     """Rows of at most ``width`` leaf children for every parent with more."""
     has_child = {e.dst for e in m.edges if e.kind in HIERARCHY_KINDS}
+    fixed = set(m.render.get("fixed") or ())   # a profile motif keeps its places
     by_parent: dict[str, list[int]] = {}
     for i, e in enumerate(m.edges):
         if e.kind == "generalization" and not e.genset and e.src not in has_child \
+                and e.src not in fixed \
                 and e.src in ids and e.dst in ids and e.src != e.dst:
             by_parent.setdefault(e.dst, []).append(i)
     out = []
@@ -123,11 +125,12 @@ def sibling_trees(m: UModel, ids: dict[str, str], width: int) -> list:
     return out
 
 
-def wrap_ranks(pos: dict[str, tuple], max_width: int) -> list[tuple[str, str]]:
+def wrap_ranks(pos: dict[str, tuple], max_width: int,
+               fixed: frozenset = frozenset()) -> list[tuple[str, str]]:
     """Invisible (lower, upper) edges splitting every rank wider than max_width."""
     ranks: dict[float, list[tuple[float, str]]] = {}
     for nid, (x, y) in pos.items():
-        if nid.startswith("n"):
+        if nid.startswith("n") and nid not in fixed:
             ranks.setdefault(round(y, 1), []).append((x, nid))
     edges = []
     for row in ranks.values():
@@ -172,7 +175,8 @@ def fit(m: UModel, render_text, dot_bin: str, env, target: float,
         # sparingly: never below MIN_WRAP classes per row.
         width = max_rank_width
         while not _ok(ratio, target, band) and ratio > target and width >= MIN_WRAP:
-            extra = wrap_ranks(pos, width)
+            extra = wrap_ranks(pos, width, frozenset(
+                f"n{i}" for i, c in enumerate(m.classes) if c in set(m.render.get("fixed") or ())))
             if extra:
                 opts = LayoutOptions(trees=opts.trees, invisible=opts.invisible + extra)
                 steps = steps + [f"wrapped ranks wider than {width}"]

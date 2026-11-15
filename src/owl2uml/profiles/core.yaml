@@ -1,0 +1,14 @@
+# Applies to any ontology; bfo and legal extend it.
+profile: core
+relation_styles:
+  # a symmetric property needs one undirected line, not two arrows
+  - match: {characteristic: symmetric}
+    style: symmetric_pair
+  # P and its declared inverse Q between the same classes: one line,
+  # P at the target end, Q at the source end
+  - match: {has_inverse: true}
+    style: inverse_merged
+badges:
+  # a property on 3+ lines with the same label: colour the lines, name it
+  # once in the key
+  auto_key: 3

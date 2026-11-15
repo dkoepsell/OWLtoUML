@@ -1,0 +1,34 @@
+# Legal Ontology Foundations (LOF): Hohfeldian positions and legal acts.
+profile: legal
+extends: bfo
+
+relation_styles:
+  - match: {property: "https://w3id.org/lof/ODP003_0001102"}   # correlative of
+    style: symmetric_pair
+    stroke: categorical-5     # teal: red is taken by disjointness
+    key: true            # the colour names it; the key says "correlative of"
+
+class_styles:
+  # normative positions coloured by order
+  - match: {subclass_of: "https://w3id.org/lof/ODP003_0001009"}   # first-order position
+    color: "#4e79a7"
+  - match: {subclass_of: "https://w3id.org/lof/ODP003_0001010"}   # second-order position
+    color: "#b07aa1"
+  # defined acts (repeal, annulment, role conferral act, ...) in one lane
+  - match: {subclass_of: "https://w3id.org/lof/ODP001_0001000", defined: true}   # legal act
+    lane: acts
+
+motifs:
+  # Hohfeld's square, both orders side by side: correlatives horizontal,
+  # opposites diagonal (claim / no-claim, duty / liberty, power / disability,
+  # liability / immunity)
+  - name: hohfeld
+    rows:
+      - [["https://w3id.org/lof/ODP003_0001001", claim],
+         ["https://w3id.org/lof/ODP003_0001002", duty],
+         ["https://w3id.org/lof/ODP003_0001005", power],
+         ["https://w3id.org/lof/ODP003_0001006", liability]]
+      - [["https://w3id.org/lof/ODP003_0001003", liberty],
+         ["https://w3id.org/lof/ODP003_0001004", no-claim],
+         ["https://w3id.org/lof/ODP003_0001007", immunity],
+         ["https://w3id.org/lof/ODP003_0001008", disability]]

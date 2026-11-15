@@ -65,6 +65,7 @@ async function renderFile(file) {
   if ($("keepUnused").checked) fd.append("keep_unused", "1");
   if ($("reason").checked) fd.append("reason", "auto");
   if ($("definitions").checked) fd.append("definitions", "1");
+  fd.append("profile", $("profile").value);
   if ($("chains").checked) fd.append("chains", "1");
   if ($("view").value === "properties") fd.append("view", "properties");
   if (flow) {
@@ -104,7 +105,8 @@ async function renderFile(file) {
     setStatus(`${file.name} — flow: ${f.steps} steps in ${f.lanes} lanes${ev}${sh}`);
     return;
   }
-  const pruned = data.pruned ? ` · ${data.pruned} unused imported classes left out` : "";
+  const pruned = (data.pruned ? ` · ${data.pruned} unused imported classes left out` : "") +
+    (data.profile ? ` · notation: ${data.profile.profiles.join(", ")}, ${data.profile.labels} line labels` : "");
   setupInferred(data.reasoning);
   const groups = data.groups && data.groups.length > 1 ? ` · ${data.groups.length} groups` : "";
   setStatus(

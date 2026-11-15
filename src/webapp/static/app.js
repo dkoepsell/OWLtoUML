@@ -95,7 +95,8 @@ async function renderFile(file) {
   const groups = data.groups && data.groups.length > 1 ? ` · ${data.groups.length} groups` : "";
   setStatus(
     `${file.name} — ${data.classes} classes, ${data.edges} relations${groups}${pruned} · engine: ${data.engine}` +
-    loaderNote(data.loader) + reasoningNote(data.reasoning) + editsNote(data.edits),
+    loaderNote(data.loader) + coverageNote(data.coverage) + reasoningNote(data.reasoning) +
+    editsNote(data.edits),
     !!(data.loader && data.loader.warnings.length) ||
     !!(data.reasoning && (data.reasoning.error || data.reasoning.inconsistent)) ||
     !!(data.edits && data.edits.skipped.length)
@@ -108,49 +109,6 @@ async function renderFile(file) {
 }
 
 // ---- edit mode -----------------------------------------------------------------
-// Which loader read the file, and how many of its imports could be loaded.
-function loaderNote(l) {
-  if (!l) return "";
-  const by = l.loader === "robot" ? "OWL API (ROBOT)" : "rdflib";
-  let note = ` · read as ${l.syntax} by ${by}`;
-  if (l.imports.length) {
-    const ok = l.imports.filter((i) => !i.error).length;
-    note += ` · ${ok} of ${l.imports.length} import(s) loaded`;
-    const failed = l.imports.filter((i) => i.error).map((i) => i.iri);
-    if (failed.length) note += ` (missing: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""})`;
-  }
-  return note;
-}
-
-// Load an ontology by IRI: the server fetches it (public hosts only) and the
-// page then treats it exactly like an uploaded file.
-async function loadIri(iri) {
-  if (!iri) return;
-  showOverlay("Fetching…");
-  setStatus(`Fetching ${iri}…`);
-  const fd = new FormData();
-  fd.append("iri", iri);
-  let res;
-  try {
-    res = await fetch("/api/fetch", { method: "POST", body: fd });
-  } catch (e) {
-    hideOverlay();
-    setStatus(`Network error: ${e.message}`, true);
-    return;
-  }
-  if (!res.ok) {
-    hideOverlay();
-    let msg = `Could not fetch ${iri} (${res.status})`;
-    try { msg = (await res.json()).error || msg; } catch (e) { /* not JSON */ }
-    setStatus(msg, true);
-    return;
-  }
-  const blob = await res.blob();
-  const name = res.headers.get("X-Filename") || "ontology.owl";
-  hideOverlay();
-  renderFile(new File([blob], name));
-}
-
 function editsNote(r) {
   if (!r) return "";
   const sk = r.skipped.length ? `, ${r.skipped.length} could not be applied (${editor.skipped(r.skipped).join("; ")})` : "";
@@ -383,74 +341,6 @@ function step(delta) {
   matchIdx = (matchIdx + delta + matches.length) % matches.length;
   focusMatch();
   setStatus(`Match ${matchIdx + 1} / ${matches.length}`);
-}
-
-// ---- download --------------------------------------------------------------
-// Downloads are self-contained interactive SVGs: the current diagram (with any
-// classes the user dragged) plus interact.js inlined. Browsers run the script
-// when the file is opened directly; Inkscape/Word/etc. ignore it and show the
-// static drawing. The root <svg> attributes come from the server's original
-// text so the file keeps its intrinsic size and viewBox.
-let interactSrc = null;
-
-async function downloadSvg() {
-  if (!lastSvgText || !svgEl) { setStatus("Nothing to download yet", true); return; }
-  if (interactSrc === null) {
-    try { interactSrc = await (await fetch("/static/interact.js")).text(); }
-    catch (e) { setStatus(`Could not load interact.js: ${e.message}`, true); return; }
-  }
-
-  const doc = new DOMParser().parseFromString(lastSvgText, "image/svg+xml");
-  const out = doc.documentElement;
-  while (out.firstChild) out.removeChild(out.firstChild);
-
-  // svg-pan-zoom wraps the drawing in a transformed viewport <g>; take its
-  // children, not the wrapper. Drop our runtime additions and highlight state.
-  const live = svgEl.querySelector(".svg-pan-zoom_viewport") || svgEl;
-  for (const child of live.childNodes) {
-    out.appendChild(doc.importNode(child, true));
-  }
-  // A spread or dragged layout can outgrow the original canvas.
-  const b = interact && interact.bounds();
-  if (b) {
-    out.setAttribute("viewBox", `${b.x} ${b.y} ${b.width} ${b.height}`);
-    out.setAttribute("width", `${b.width}pt`);
-    out.setAttribute("height", `${b.height}pt`);
-  }
-  out.querySelectorAll("style.oi-style, path.oi-hit, g.o2u-draft").forEach((n) => n.remove());
-  out.classList.remove("o2u-editing");
-  out.querySelectorAll(".o2u-deleted, .o2u-moved, .o2u-sel")
-    .forEach((n) => n.classList.remove("o2u-deleted", "o2u-moved", "o2u-sel"));
-  // Keep the inferred-view stylesheet even if svg-pan-zoom left it outside the
-  // viewport group we copied from.
-  if (!out.querySelector("style.o2u-style")) {
-    const st = svgEl.querySelector("style.o2u-style");
-    if (st) out.insertBefore(doc.importNode(st, true), out.firstChild);
-  }
-  // Keep the embedded OWL source, so the file's source panel works offline.
-  if (!out.querySelector("[id='o2u-source']")) {
-    const js = svgEl.querySelector("[id='o2u-source']");
-    if (js) out.insertBefore(doc.importNode(js, true), out.firstChild);
-  }
-  out.querySelectorAll(".oi-hl, .oi-sel, .oi-drag, .node--hit, .node--current")
-    .forEach((n) => n.classList.remove("oi-hl", "oi-sel", "oi-drag", "node--hit", "node--current"));
-
-  const script = doc.createElementNS("http://www.w3.org/2000/svg", "script");
-  script.appendChild(doc.createCDATASection(
-    interactSrc.replace(/]]>/g, "]]]]><![CDATA[>") +
-    "\nOwlUmlInteract.attach(document.documentElement, { standalone: true });\n"
-  ));
-  out.appendChild(script);
-
-  const xml = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n' +
-    new XMLSerializer().serializeToString(out);
-  const blob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${lastName}.svg`;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 // ---- wiring ----------------------------------------------------------------

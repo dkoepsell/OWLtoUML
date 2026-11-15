@@ -170,6 +170,7 @@ def prune_unused(m: UModel) -> int:
                                         if e.src == cid and e.dst in keep) < 2:
             keep.discard(cid)
     removed = [cid for cid in m.classes if cid not in keep]
+    m.pruned = removed
     for cid in removed:
         del m.classes[cid]
     m.edges = [
@@ -200,7 +201,7 @@ def merge_edges(m: UModel) -> None:
       asserted subclass link between the same pair.
     """
     # restrictions name their property IRIs (Edge.props); match on those
-    restricted = {(e.src, e.dst, p) for e in m.edges if e.kind == "restriction" for p in e.props}
+    restricted = {(e.src, e.dst, p): e for e in m.edges if e.kind == "restriction" for p in e.props}
     defined = {(e.src, e.dst) for e in m.edges if e.kind == "definition"}
 
     merged: dict[tuple[str, str, str], object] = {}
@@ -208,6 +209,9 @@ def merge_edges(m: UModel) -> None:
     for e in m.edges:
         if e.kind == "association" and e.props and \
                 all((e.src, e.dst, p) in restricted for p in e.props):
+            # the restriction's line now also stands for this domain/range
+            keeper = restricted[(e.src, e.dst, e.props[0])]
+            keeper.axioms = sorted(set(keeper.axioms) | set(e.axioms))
             continue
         if e.kind == "generalization" and (e.src, e.dst) in defined:
             continue
@@ -218,6 +222,7 @@ def merge_edges(m: UModel) -> None:
             out.append(e)
             continue
         prev.props = sorted(set(prev.props) | set(e.props))
+        prev.axioms = sorted(set(prev.axioms) | set(e.axioms))
         if prev.multiplicity or e.multiplicity:
             # one line, several restrictions: multiplicities go into the labels
             for x in (prev, e):

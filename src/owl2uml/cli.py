@@ -6,7 +6,7 @@ import sys
 
 from .parse import load_graph, parse_ontology, property_view
 from .load import IMPORT_MODES, LOADERS, annotate_model, load
-from . import reason
+from . import coverage, reason
 from .postprocess import postprocess
 from .layout import layout
 from .render import render_svg
@@ -75,6 +75,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--property-view", action="store_true",
                     help="draw the property hierarchy (sub-properties, inverses, "
                          "domains, ranges, characteristics) instead of the classes")
+    ap.add_argument("--coverage-out", metavar="FILE",
+                    help="where to write the coverage report: what happened to every "
+                         "axiom (default: <output>.coverage.json; '-' for none)")
     flow = ap.add_argument_group("flow view (process ontologies)")
     flow.add_argument("--flow", action="store_true",
                       help="draw the processes as a flow in swimlanes instead of a class "
@@ -117,6 +120,16 @@ def main(argv: list[str] | None = None) -> int:
         print("warning: no classes found in ontology; producing empty diagram",
               file=sys.stderr)
 
+    cov = None
+    if not args.property_view:
+        cov = coverage.build(graph, model, definitions=args.show_definitions)
+        cov_out = args.coverage_out or out.rsplit(".", 1)[0] + ".coverage.json"
+        if cov_out != "-":
+            with open(cov_out, "w", encoding="utf-8") as fh:
+                fh.write(coverage.to_json(cov))
+        print(f"coverage: {coverage.headline(cov)}"
+              + (f" (see {cov_out})" if cov_out != "-" else ""), file=sys.stderr)
+
     use_dot = args.engine == "dot" or (args.engine == "auto" and dot_available())
     if args.engine == "dot" and not dot_available():
         print("error: --engine dot requested but graphviz 'dot' not found "
@@ -127,7 +140,8 @@ def main(argv: list[str] | None = None) -> int:
         src = None if (args.no_source or args.property_view) else build_source(graph, model)
         svg = render_dot_svg(model, legend=not args.no_legend,
                              compact_labels=args.compact_labels, source=src,
-                             definitions=args.show_definitions, chains=args.draw_chains)
+                             definitions=args.show_definitions, chains=args.draw_chains,
+                             coverage=coverage.summary(cov) if cov else None)
         if args.interactive:
             svg = inline_viewer(svg)
         engine = "graphviz dot"

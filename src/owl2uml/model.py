@@ -1,7 +1,27 @@
 """UML class-diagram model produced from an OWL/RDFS ontology."""
 from __future__ import annotations
 
+import contextlib
+import contextvars
 from dataclasses import dataclass, field
+
+# Ids of the axiom(s) the parser is drawing right now (see axioms.py). Every
+# Edge and Attr created inside ``drawing(ids)`` records them, so the coverage
+# report knows which axioms reached the diagram.
+_CURRENT_AXIOMS: contextvars.ContextVar[tuple] = contextvars.ContextVar("axioms", default=())
+
+
+@contextlib.contextmanager
+def drawing(*ids: str):
+    token = _CURRENT_AXIOMS.set(tuple(i for i in ids if i))
+    try:
+        yield
+    finally:
+        _CURRENT_AXIOMS.reset(token)
+
+
+def _current() -> list[str]:
+    return list(_CURRENT_AXIOMS.get())
 
 
 @dataclass
@@ -9,6 +29,8 @@ class Attr:
     """A datatype property rendered as a class attribute."""
     name: str
     type: str = ""
+    axioms: list[str] = field(default_factory=_current)
+    props: list[str] = field(default_factory=list)   # the property it shows
 
     def label(self) -> str:
         return f"{self.name}: {self.type}" if self.type else self.name
@@ -55,6 +77,7 @@ class Edge:
     multiplicity: str = ""   # UML multiplicity at the target end: "1..*", "0..1", "3"
     genset: str = ""         # generalization set id (DisjointUnion): one shared arrowhead
     props: list[str] = field(default_factory=list)   # property IRIs behind the label
+    axioms: list[str] = field(default_factory=_current)  # ids of the axioms drawn
 
 
 @dataclass
@@ -72,6 +95,7 @@ class UClass:
     owner: str = ""        # anonymous nodes: the class whose axiom made them
     deprecated: bool = False      # owl:deprecated true
     definition: str = ""          # IAO_0000115 / skos:definition / rdfs:comment
+    axioms: list[str] = field(default_factory=list)  # axioms shown on the box itself
 
     # filled in by the layout pass
     x: float = 0.0
@@ -106,6 +130,10 @@ class UModel:
     properties: dict[str, dict] = field(default_factory=dict)
     # what the diagram cannot show (punning, anonymous individuals)
     notes: list[dict] = field(default_factory=list)
+    pruned: list[str] = field(default_factory=list)   # classes left out by prune_unused
+    # entities shown inside a box rather than as one (oneOf members) or named
+    # in the key (super-properties, inverses): for the coverage report
+    mentioned: set[str] = field(default_factory=set)
 
     def cls(self, cid: str, name: str | None = None) -> UClass:
         """Get or create a class node by id."""

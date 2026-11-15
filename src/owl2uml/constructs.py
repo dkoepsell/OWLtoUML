@@ -11,6 +11,7 @@ from rdflib import BNode, Graph, Literal, OWL, RDF, RDFS, URIRef
 from rdflib.collection import Collection
 from rdflib.namespace import SKOS, XSD
 
+from .axioms import binary_id, nary_id
 from .model import Attr, Edge, UModel
 
 OBO = "http://purl.obolibrary.org/obo/"
@@ -168,16 +169,19 @@ def _disjointness(g: Graph, m: UModel, register) -> None:
             key = frozenset((a, b))
             if key not in seen:
                 seen.add(key)
-                m.edges.append(Edge(src=register(a), dst=register(b), kind="disjoint", label="⊥"))
+                m.edges.append(Edge(src=register(a), dst=register(b), kind="disjoint", label="⊥",
+                                    axioms=[binary_id(g, OWL.disjointWith, a, b)]))
     hub = 0
     for ax in g.subjects(RDF.type, OWL.AllDisjointClasses):
-        members = [x for x in items(g, ax, OWL.members) if isinstance(x, URIRef)]
+        all_members = items(g, ax, OWL.members)
+        ids = [nary_id(g, "DisjointClasses", all_members)]
+        members = [x for x in all_members if isinstance(x, URIRef)]
         if len(members) == 2:
             key = frozenset(members)
             if key not in seen:
                 seen.add(key)
                 m.edges.append(Edge(src=register(members[0]), dst=register(members[1]),
-                                    kind="disjoint", label="⊥"))
+                                    kind="disjoint", label="⊥", axioms=ids))
         elif len(members) > 2:
             hub += 1
             hid = f"_:disjoint{hub}"
@@ -185,7 +189,7 @@ def _disjointness(g: Graph, m: UModel, register) -> None:
             node.kind = "disjoint"
             node.owner = str(members[0])
             for x in members:
-                m.edges.append(Edge(src=hid, dst=register(x), kind="disjoint"))
+                m.edges.append(Edge(src=hid, dst=register(x), kind="disjoint", axioms=ids))
 
 
 def _sibling_cliques(g: Graph, m: UModel) -> None:
@@ -213,10 +217,12 @@ def _sibling_cliques(g: Graph, m: UModel) -> None:
         hid = f"_:disjoint{hub}"
         node = m.cls(hid, "⊥")
         node.kind, node.owner = "disjoint", clique[0]
+        ids = sorted({x for i, a in enumerate(clique) for b in clique[i + 1:]
+                      for x in pair[frozenset((a, b))].axioms})
         for i, a in enumerate(clique):
             for b in clique[i + 1:]:
                 used.add(frozenset((a, b)))
-            m.edges.append(Edge(src=hid, dst=a, kind="disjoint"))
+            m.edges.append(Edge(src=hid, dst=a, kind="disjoint", axioms=ids))
     if used:
         m.edges = [e for e in m.edges
                    if not (e.kind == "disjoint" and frozenset((e.src, e.dst)) in used)]
@@ -227,10 +233,11 @@ def _disjoint_unions(g: Graph, m: UModel, register) -> None:
         if not isinstance(whole, URIRef):
             continue
         wid = register(whole)
+        ids = [binary_id(g, OWL.disjointUnionOf, whole, lst)]
         parts = [x for x in items(g, whole, OWL.disjointUnionOf) if isinstance(x, URIRef)]
         for i, part in enumerate(parts):
             m.edges.append(Edge(src=register(part), dst=wid, kind="generalization",
-                                genset=f"gs{n}",
+                                genset=f"gs{n}", axioms=ids,
                                 label="{disjoint, complete}" if i == 0 else ""))
 
 
@@ -252,6 +259,9 @@ def property_key(g: Graph, m: UModel, display) -> dict:
         }
         if info["characteristics"] or info["super"] or info["inverse"] or info["chains"]:
             out[p] = info
+            m.mentioned.update(str(x) for x in g.objects(u, RDFS.subPropertyOf))
+            m.mentioned.update(str(x) for x in set(g.objects(u, OWL.inverseOf))
+                               | set(g.subjects(OWL.inverseOf, u)))
     return out
 
 

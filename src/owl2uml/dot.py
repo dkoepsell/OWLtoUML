@@ -201,7 +201,26 @@ def _slug(name: str) -> str:
     return "".join(ch if ch.isalnum() else "-" for ch in name)
 
 
-def _legend(m: UModel) -> str:
+def _coverage_rows(cov: dict | None) -> list[str]:
+    """Key rows saying what happened to the ontology's axioms (WS1.3)."""
+    if not cov:
+        return []
+    t = cov["totals"]
+    rows = ['<tr><td colspan="2" align="left"><b>Coverage</b> <font point-size="9">'
+            f'{t["axioms"]} axioms: {t["drawn"]} drawn · {t["panel"]} in the source panel · '
+            f'{t["dropped"]} left out</font></td></tr>']
+    for reason, n in list(cov.get("dropped_reasons", {}).items())[:3]:
+        rows.append(f'<tr><td></td><td align="left"><font point-size="9">{n} left out: '
+                    f'{_h(reason)}</font></td></tr>')
+    notes = cov.get("notes") or []
+    if notes:
+        rows.append(f'<tr><td></td><td align="left"><font point-size="9">{len(notes)} note(s): '
+                    + _h("; ".join(f"{n['name']} {n['reason']}" for n in notes[:2]))
+                    + ("…" if len(notes) > 2 else "") + '</font></td></tr>')
+    return rows
+
+
+def _legend(m: UModel, coverage: dict | None = None) -> str:
     """A key: one swatch per group, plus the line styles used."""
     rows = ['<tr><td colspan="2" align="left"><b>Key</b></td></tr>']
     # one group says nothing: its swatch is left out
@@ -238,6 +257,7 @@ def _legend(m: UModel) -> str:
     if any(c.kind == "individual" for c in m.classes.values()):
         extra += '<br/>underlined box: an individual (value)'
     rows += _property_rows(m)
+    rows += _coverage_rows(coverage)
     rows.append('<tr><td align="left" colspan="2">'
                 '<font point-size="10">solid hollow arrow: subclass of<br/>'
                 'dashed hollow arrow: defined as a kind of (≡)<br/>'
@@ -276,7 +296,8 @@ def _property_rows(m: UModel) -> list[str]:
 
 
 def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
-           definitions: bool = False, chains: bool = False) -> str:
+           definitions: bool = False, chains: bool = False,
+           coverage: dict | None = None) -> str:
     """``definitions``: definition text under each class name
     (--show-definitions). ``chains``: property chains added to line labels
     (--draw-chains)."""
@@ -378,8 +399,8 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
             )
     special = any(e.kind in ("inferred", "disjoint", "member") or e.genset for e in m.edges) or \
         any(c.unsatisfiable or c.deprecated for c in m.classes.values()) or bool(m.properties)
-    if legend and (len(groups) > 1 or special):
-        lines.append(_legend(m))
+    if legend and (len(groups) > 1 or special or coverage):
+        lines.append(_legend(m, coverage))
     lines.append("}")
     return "\n".join(lines)
 
@@ -401,7 +422,7 @@ _XLABEL_MIN = 40
 
 def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
                    source: dict | None = None, definitions: bool = False,
-                   chains: bool = False) -> str:
+                   chains: bool = False, coverage: dict | None = None) -> str:
     """Render with Graphviz.
 
     ``compact_labels``: "auto" (diagrams of 40+ classes), "on", "off". When on,
@@ -415,7 +436,9 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
     compact = compact_labels == "on" or (
         compact_labels == "auto" and len(m.classes) >= _XLABEL_MIN)
     src = to_dot(m, legend=legend, xlabels=compact, definitions=definitions,
-                 chains=chains).encode("utf-8")
+                 chains=chains, coverage=coverage).encode("utf-8")
+    if source is not None and coverage:
+        source = dict(source, coverage=coverage)
     engine = _engine_for(m)
 
     try:

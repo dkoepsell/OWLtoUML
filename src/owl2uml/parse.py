@@ -8,7 +8,8 @@ from rdflib.namespace import XSD
 from .bfo_labels import BFO_LABELS
 from .constructs import (badges, datatype_text, enrich, individual_type, is_individual,
                          multiplicity)
-from .model import Attr, Edge, UModel
+from .axioms import binary_id
+from .model import _CURRENT_AXIOMS as _AX, Attr, Edge, UModel, _current as _current_ids, drawing
 
 
 def _local(term) -> str:
@@ -202,7 +203,8 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
         if isinstance(sub, URIRef) and isinstance(sup, URIRef) and sup != OWL.Thing:
             register_class(sub)
             register_class(sup)
-            m.edges.append(Edge(src=str(sub), dst=str(sup), kind="generalization"))
+            with drawing(binary_id(g, RDFS.subClassOf, sub, sup)):
+                m.edges.append(Edge(src=str(sub), dst=str(sup), kind="generalization"))
 
     # --- 2b. Class expressions: definitions and restrictions --------------
     owl_thing = OWL.Thing
@@ -258,6 +260,7 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
             node = m.classes[nid]
             node.stereotype = "enumeration"
             node.attrs = [Attr(name=_display(x, labels)) for x in one]
+            m.mentioned.update(str(x) for x in one)
             return nid
         return None
 
@@ -295,6 +298,8 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
             c = m.classes[cid]
             c.stereotype = "enumeration"
             c.attrs += [Attr(name=_display(x, labels)) for x in one]
+            m.mentioned.update(str(x) for x in one)
+            c.axioms += _current_ids()
             return
         # A union or complement as a superclass or definition: an anonymous
         # ⊔ / ¬ node the class specializes.
@@ -315,13 +320,13 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
         dtext = datatype_text(g, filler) if filler is not None else None
         if dtext is not None:
             name = f"{pname} [{mult}]" if mult else f"{pname} {q}"
-            m.classes[cid].attrs.append(Attr(name=name, type=dtext))
+            m.classes[cid].attrs.append(Attr(name=name, type=dtext, props=props))
             return
         if filler is None:
-            m.classes[cid].attrs.append(Attr(name=f"{pname} [{mult}]" if mult else label))
+            m.classes[cid].attrs.append(Attr(name=f"{pname} [{mult}]" if mult else label, props=props))
             return
         if isinstance(filler, Literal):
-            m.classes[cid].attrs.append(Attr(name=label, type=str(filler)))
+            m.classes[cid].attrs.append(Attr(name=label, type=str(filler), props=props))
             return
         if isinstance(filler, BNode):
             comp = g.value(filler, OWL.complementOf)
@@ -339,7 +344,8 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
     for sub, sup in g.subject_objects(RDFS.subClassOf):
         if isinstance(sub, URIRef) and isinstance(sup, BNode):
             register_class(sub)
-            add_expr(sub, sup, defining=False)
+            with drawing(binary_id(g, RDFS.subClassOf, sub, sup)):
+                add_expr(sub, sup, defining=False)
 
     for a, b in g.subject_objects(OWL.equivalentClass):
         for cls_uri, expr in ((a, b), (b, a)):
@@ -352,7 +358,8 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
                 register_class(cls_uri)
                 if isinstance(expr, BNode):
                     m.classes[str(cls_uri)].defined = True
-                add_expr(cls_uri, expr, defining=True)
+                with drawing(binary_id(g, OWL.equivalentClass, a, b)):
+                    add_expr(cls_uri, expr, defining=True)
 
     # --- 3. Properties ----------------------------------------------------
     prop_uris: set[URIRef] = set()
@@ -384,19 +391,23 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
             # Orphan property: skip (cannot attach to a class box).
             continue
 
+        dr_ids = [binary_id(g, RDFS.domain, p, x) for x in g.objects(p, RDFS.domain)] + \
+                 [binary_id(g, RDFS.range, p, x) for x in g.objects(p, RDFS.range)]
+        token = _AX.set(tuple(dr_ids))
         for d in domains:
             dcid = str(d)
             m.cls(dcid, _display(d, labels))
             for t in facet_ranges:
-                m.classes[dcid].attrs.append(Attr(name=name, type=t))
+                m.classes[dcid].attrs.append(Attr(name=name, type=t, props=[str(p)]))
             if not ranges:
                 # Unknown range -> show as attribute with no type.
                 if not is_object and not facet_ranges:
-                    m.classes[dcid].attrs.append(Attr(name=name))
+                    m.classes[dcid].attrs.append(Attr(name=name, props=[str(p)]))
                 continue
             for r in ranges:
                 if is_data or str(r).startswith(str(XSD)):
-                    m.classes[dcid].attrs.append(Attr(name=name, type=datatype_text(g, r) or _local(r)))
+                    m.classes[dcid].attrs.append(Attr(name=name, type=datatype_text(g, r) or _local(r),
+                                                      props=[str(p)]))
                 elif is_object or r in class_uris:
                     rcid = str(r)
                     m.cls(rcid, _display(r, labels))
@@ -404,7 +415,8 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
                         Edge(src=dcid, dst=rcid, kind="association", label=name, props=[str(p)])
                     )
                 else:
-                    m.classes[dcid].attrs.append(Attr(name=name, type=_local(r)))
+                    m.classes[dcid].attrs.append(Attr(name=name, type=_local(r), props=[str(p)]))
+        _AX.reset(token)
 
     # Deduplicate attributes per class (stable order).
     for c in m.classes.values():
@@ -415,6 +427,9 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
             if key not in seen:
                 seen.add(key)
                 unique.append(a)
+            else:
+                first = next(u for u in unique if (u.name, u.type) == key)
+                first.axioms = sorted(set(first.axioms) | set(a.axioms))
         c.attrs = unique
 
     enrich(g, m, register_class, lambda t: _display(t, labels))

@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from owl2uml.parse import parse_ontology, property_view  # noqa: E402
 from owl2uml.load import IMPORT_MODES, LoadError, annotate_model, load  # noqa: E402
 from owl2uml.fetch import FetchError, fetch          # noqa: E402
-from owl2uml import reason                         # noqa: E402
+from owl2uml import coverage, reason               # noqa: E402
 from owl2uml.postprocess import postprocess       # noqa: E402
 from owl2uml.dot import dot_available, render_dot_svg  # noqa: E402
 from owl2uml.layout import layout                  # noqa: E402
@@ -133,6 +133,12 @@ def render():
     except Exception as exc:  # noqa: BLE001
         return jsonify(error=f"parse failed: {exc}"), 400
 
+    cov = None
+    if not properties:
+        try:
+            cov = coverage.summary(coverage.build(graph, model, definitions=_flag("definitions")))
+        except Exception:  # noqa: BLE001 - the diagram matters more
+            cov = None
     try:
         if dot_available():
             # The OWL behind each class and line, for the source panel
@@ -144,7 +150,7 @@ def render():
                 except Exception:  # noqa: BLE001 - the diagram matters more
                     src = None
             svg = render_dot_svg(model, source=src, definitions=_flag("definitions"),
-                                 chains=_flag("chains"))
+                                 chains=_flag("chains"), coverage=cov)
             engine = "graphviz"
         else:
             w, h = layout(model)
@@ -162,6 +168,7 @@ def render():
         reasoning=inf.report(),
         edits=edit_report,
         loader=loaded.report(),
+        coverage=cov,
         groups=[
             {"name": g.name, "color": g.color, "count": g.count, "upper": g.upper,
              "iri": g.iri, "version_iri": g.version_iri}

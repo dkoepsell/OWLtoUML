@@ -453,7 +453,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   $("stretchY").addEventListener("input", () => onStretch("y"));
   $("download").addEventListener("click", () => {
-    const fmt = $("exportFmt").value;
+    const fmt = $("figureFmt").value;
     if (fmt === "svg") downloadSvg(); else downloadFigure(fmt);
   });
   $("clearFocus").addEventListener("click", () => interact && interact.clear());

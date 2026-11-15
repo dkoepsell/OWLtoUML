@@ -121,3 +121,12 @@ def test_web_export():
     assert r.headers["X-Extension"] == "pdf"
     bad = c.post("/api/render", data={"file": (FIX.open("rb"), "c.ttl"), "fmt": "doc"})
     assert bad.status_code == 400
+
+
+def test_page_ids_are_unique():
+    """Two elements with one id made the Download menu read the wrong one."""
+    import collections
+    import re
+    html = (ROOT / "src" / "webapp" / "static" / "index.html").read_text()
+    ids = collections.Counter(re.findall(r'\bid="([^"]+)"', html))
+    assert [i for i, n in ids.items() if n > 1] == []

@@ -14,7 +14,8 @@ let matchIdx = -1;
 let lastSvgText = null;
 let lastName = "diagram";
 let lastFile = null;
-let lastFileSent = null;   // the sidecar upload applies to the first drawing only       // kept so the view can be switched without re-choosing it
+let lastFileSent = null;
+let lastForm = null;      // the last render's request, reused by figure exports   // the sidecar upload applies to the first drawing only       // kept so the view can be switched without re-choosing it
 
 // Edit mode (static/edit.js): a list of edits applied server-side on re-layout/export.
 let editor = null;
@@ -74,6 +75,7 @@ async function renderFile(file) {
     fd.append("edits", JSON.stringify(editor.ops()));
   }
 
+  lastForm = fd;
   let res, data;
   try {
     res = await fetch("/api/render", { method: "POST", body: fd });
@@ -450,7 +452,10 @@ window.addEventListener("DOMContentLoaded", () => {
     if (interact) interact.saveLayout(`${lastName}.layout.json`);
   });
   $("stretchY").addEventListener("input", () => onStretch("y"));
-  $("download").addEventListener("click", downloadSvg);
+  $("download").addEventListener("click", () => {
+    const fmt = $("exportFmt").value;
+    if (fmt === "svg") downloadSvg(); else downloadFigure(fmt);
+  });
   $("clearFocus").addEventListener("click", () => interact && interact.clear());
   $("inferred").addEventListener("click", toggleInferred);
   $("view").addEventListener("change", () => { $("flowfiles").hidden = $("view").value !== "flow"; });

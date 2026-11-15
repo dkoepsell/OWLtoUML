@@ -84,7 +84,7 @@ def _icon(color: str = _ICON_BG) -> str:
     return (
         f'<table border="1" color="{border}" cellborder="0" '
         f'cellspacing="0" cellpadding="0" bgcolor="{color}" style="rounded">'
-        '<tr><td width="15" height="15" align="center">'
+        '<tr><td width="15" height="15" fixedsize="true" align="center">'
         '<font color="white" point-size="10"><b>C</b></font>'
         '</td></tr></table>'
     )
@@ -119,7 +119,7 @@ def _label(c: UClass, color: str = "", definitions: bool = False) -> str:
     # Header: green class icon to the left of the (optionally stereotyped) name.
     header = (
         '<table border="0" cellborder="0" cellspacing="0" cellpadding="0"><tr>'
-        f'<td valign="middle">{_icon(color)}</td>'
+        f'<td valign="middle" width="17" fixedsize="true" height="17">{_icon(color)}</td>'
         '<td width="6"></td>'
         f'<td valign="middle">{title}</td>'
         '</tr></table>'

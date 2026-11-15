@@ -73,3 +73,39 @@ async function downloadSvg() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// Other formats (PDF, PNG, TikZ, PlantUML, ...) are made on the server from
+// the same request as the drawing on screen, with every class pinned where it
+// is now, so drags and the stretch sliders carry over.
+async function downloadFigure(fmt) {
+  if (!lastForm || !interact) { setStatus("Nothing to download yet", true); return; }
+  const fd = new FormData();
+  for (const [k, v] of lastForm) if (!k.startsWith("layout")) fd.append(k, v);
+  const here = interact.layout();
+  for (const v of Object.values(here)) v.pinned = true;
+  fd.append("layout_json", JSON.stringify(here));
+  fd.append("fmt", fmt);
+  showOverlay(`Making ${fmt.toUpperCase()}…`);
+  let res;
+  try { res = await fetch("/api/render", { method: "POST", body: fd }); }
+  catch (e) { hideOverlay(); setStatus(`Network error: ${e.message}`, true); return; }
+  hideOverlay();
+  if (!res.ok) {
+    let msg = `Export failed (${res.status})`;
+    try { msg = (await res.json()).error || msg; } catch (e) { /* not JSON */ }
+    setStatus(msg, true);
+    return;
+  }
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  const ext = res.headers.get("X-Extension") || fmt;
+  a.download = `${lastName}${res.headers.get("X-Suffix") || ""}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  const warn = res.headers.get("X-Warnings");
+  setStatus(warn ? `Saved ${a.download} · ${decodeURIComponent(warn)}` : `Saved ${a.download}`,
+            !!warn);
+}

@@ -178,6 +178,8 @@ def render():
     except Exception as exc:  # noqa: BLE001
         return jsonify(error=f"render failed: {exc}"), 500
 
+    if request.form.get("fmt"):
+        return _figure(request.form["fmt"], model, svg, graph, engine)
     return jsonify(
         svg=svg,
         engine=engine,
@@ -208,6 +210,32 @@ def _aspect():
     except ValueError:
         r = parse_target("auto")
     return min(2.0, max(0.5, r)) if r else None
+
+
+def _figure(fmt: str, model, svg: str, graph, engine: str):
+    """The drawing in another format (export menu), print-checked when static."""
+    from urllib.parse import quote
+    from owl2uml.export import FORMATS, export, layout_json
+    from owl2uml.printcheck import check
+    if fmt not in FORMATS:
+        return jsonify(error=f"unknown format: {fmt}"), 400
+    if engine != "graphviz" and fmt in ("pdf", "png", "tikz", "graphml"):
+        return jsonify(error=f"{fmt} needs Graphviz on the server"), 500
+    try:
+        x = export(model, fmt, svg=svg, graph=graph)
+        warnings = list(x.warnings)
+        if fmt in ("svg-static", "pdf", "png", "tikz"):
+            named = sum(1 for c in model.classes.values() if c.kind == "class")
+            warnings += check(svg, layout_json(model), named)["warnings"]
+    except (RuntimeError, ValueError) as exc:
+        return jsonify(error=f"{fmt} export failed: {exc}"), 500
+    resp = Response(x.data, mimetype=x.mime)
+    suffix = "-static" if fmt == "svg-static" else "-nowl" if fmt == "ontopuml" else ""
+    resp.headers["X-Extension"] = x.ext
+    resp.headers["X-Suffix"] = suffix
+    if warnings:
+        resp.headers["X-Warnings"] = quote("; ".join(warnings)[:900])
+    return resp
 
 
 def _pins() -> dict:

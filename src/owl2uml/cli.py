@@ -87,6 +87,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--coverage-out", metavar="FILE",
                     help="where to write the coverage report: what happened to every "
                          "axiom (default: <output>.coverage.json; '-' for none)")
+    exp = ap.add_argument_group("exports")
+    exp.add_argument("--export", metavar="FMT[,FMT]",
+                     help="also write the figure as svg-static, pdf, png, tikz, plantuml, "
+                          "ontopuml, mermaid or graphml (<output>.<ext>)")
+    exp.add_argument("--dpi", type=int, default=200, help="PNG resolution (default 200)")
+    exp.add_argument("--page-width", type=float, default=6.5, metavar="IN",
+                     help="page width for the print checks of static exports (default 6.5)")
+    exp.add_argument("--strict", action="store_true",
+                     help="print-check warnings fail the run (non-zero exit), for CI")
     lay = ap.add_argument_group("saved layout")
     lay.add_argument("--layout", metavar="FILE",
                      help="saved positions to keep (.layout.json sidecar or a layout "
@@ -199,6 +208,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     svg = _render(args, graph, model, cov, pinning.pins(saved))
     _write(out, svg)
+    if args.export and not _exports(args, graph, model, svg, out):
+        return 1
     if args.save_layout or args.layout_in_ontology:
         _store_layout(args, model, svg, saved)
 
@@ -252,6 +263,41 @@ def _flow(args, out: str) -> int:
             (f", {s['findings']} SHACL findings" if s["shapes"] else "")
     print(f"wrote {out}  (flow: {s['steps']} steps in {s['lanes']} lanes{extra})")
     return 0
+
+
+def _exports(args, graph, model, svg: str, out: str) -> bool:
+    from .export import FORMATS, export, layout_json
+    from .printcheck import check
+    stem = out.rsplit(".", 1)[0]
+    fmts = [f.strip() for f in args.export.split(",") if f.strip()]
+    if set(fmts) & {"svg-static", "pdf", "png", "tikz"} and model.drawing:
+        named = sum(1 for c in model.classes.values() if c.kind == "class")
+        found = check(svg, layout_json(model), named, args.page_width)
+        for w in found["warnings"]:
+            print(f"print check: {w}", file=sys.stderr)
+        if not found["warnings"]:
+            print(f"print check: ok at {args.page_width:g} in (smallest text "
+                  f"{found['min_font_pt']} pt)", file=sys.stderr)
+        elif args.strict:
+            print("error: print checks failed (--strict)", file=sys.stderr)
+            return False
+    for fmt in fmts:
+        if fmt not in FORMATS:
+            print(f"error: unknown export format '{fmt}' ({', '.join(FORMATS)})", file=sys.stderr)
+            return False
+        try:
+            x = export(model, fmt, svg=svg, dpi=args.dpi, graph=graph)
+        except (RuntimeError, ValueError) as exc:
+            print(f"error: {fmt} export failed: {exc}", file=sys.stderr)
+            return False
+        suffix = "-static" if fmt == "svg-static" else "-nowl" if fmt == "ontopuml" else ""
+        path = f"{stem}{suffix}.{x.ext}"
+        with open(path, "wb") as fh:
+            fh.write(x.data)
+        for w in x.warnings:
+            print(f"warning: {fmt}: {w}", file=sys.stderr)
+        print(f"wrote {path}")
+    return True
 
 
 def _saved_layout(args) -> dict:

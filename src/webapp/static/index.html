@@ -57,7 +57,18 @@
       <span class="sep"></span>
       <button id="open" title="Open another ontology">Open…</button>
       <button id="saveLayout" title="Save where the classes are (moved ones pinned) as a .layout.json file to keep next to the ontology">Save layout</button>
-      <button id="download" title="Download SVG">Download SVG</button>
+      <select id="exportFmt" title="Format to download">
+        <option value="svg">SVG (interactive)</option>
+        <option value="svg-static">SVG (static, for papers)</option>
+        <option value="pdf">PDF</option>
+        <option value="png">PNG (200 dpi)</option>
+        <option value="tikz">TikZ (LaTeX)</option>
+        <option value="plantuml">PlantUML</option>
+        <option value="ontopuml">ontopuml (IOF NOWL)</option>
+        <option value="mermaid">Mermaid</option>
+        <option value="graphml">GraphML (yEd)</option>
+      </select>
+      <button id="download" title="Download the figure in the chosen format">Download</button>
     </div>
   </header>
   <div class="edit-help" id="editHelp" hidden>

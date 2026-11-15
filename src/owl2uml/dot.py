@@ -6,8 +6,6 @@ Graphviz HTML-like table labels.
 """
 from __future__ import annotations
 
-import os
-import shutil
 import subprocess
 from html import escape as _h
 from pathlib import Path
@@ -15,6 +13,7 @@ from pathlib import Path
 from .source import embed as embed_source
 from .model import UModel, UClass
 from .postprocess import DEFAULT_COLOR, UPPER_COLOR, shade, tint
+from .tools import graphviz
 
 _ROOT = Path(__file__).resolve().parents[2]
 _PREFIX = _ROOT / ".local"
@@ -22,17 +21,7 @@ _PREFIX = _ROOT / ".local"
 
 def _gv() -> tuple[str | None, dict | None]:
     """Return (dot_path, env) — local prefix first, then system PATH."""
-    local = _PREFIX / "usr/bin/dot"
-    if local.exists():
-        libdir = _PREFIX / "usr/lib/x86_64-linux-gnu"
-        env = os.environ.copy()
-        env["LD_LIBRARY_PATH"] = os.pathsep.join(
-            [str(libdir), str(libdir / "graphviz"), env.get("LD_LIBRARY_PATH", "")]
-        )
-        env["GVBINDIR"] = str(libdir / "graphviz")
-        return str(local), env
-    sysdot = shutil.which("dot")
-    return (sysdot, None) if sysdot else (None, None)
+    return graphviz("dot")
 
 
 def dot_available() -> bool:

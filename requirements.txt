@@ -6,3 +6,6 @@ gunicorn>=21.0
 owlrl>=7.0
 owlready2>=0.46
 pyshacl>=0.25
+pyyaml>=6.0
+networkx>=3.0
+cairosvg>=2.7

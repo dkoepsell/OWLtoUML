@@ -38,4 +38,18 @@ export GVBINDIR="$LIBDIR/graphviz"
 "$DOT" -c || true   # writes plugin config registry (config6a)
 "$DOT" -V
 
+ROBOT_VERSION="1.9.8"
+ROBOT_JAR="$PREFIX/robot/robot.jar"
+if [ -f "$ROBOT_JAR" ]; then
+  echo "==> ROBOT already present at $ROBOT_JAR"
+elif command -v java >/dev/null; then
+  echo "==> Downloading ROBOT $ROBOT_VERSION (OWL/XML, Manchester, Functional, OBO input; explanations)"
+  mkdir -p "$(dirname "$ROBOT_JAR")"
+  curl -fsSL -o "$ROBOT_JAR.part" \
+    "https://github.com/ontodev/robot/releases/download/v$ROBOT_VERSION/robot.jar" \
+    && mv "$ROBOT_JAR.part" "$ROBOT_JAR"
+else
+  echo "==> No Java runtime: skipping ROBOT (rdflib loader will be used)"
+fi
+
 echo "==> Done. Run the web UI with:  ./serve"

@@ -25,8 +25,9 @@ from dataclasses import dataclass, field
 from .model import HIERARCHY_KINDS, UModel
 
 DEFAULT_TARGET = 1.4
-TOLERANCE = 1.3          # accept ratios within target/1.3 .. target*1.3
+TOLERANCE = 1.15        # accept ratios within target/1.15 .. target*1.15
 STAGGER = 3
+MIN_WRAP = 6             # never wrap ranks into rows narrower than this
 LEAF_MIN = 4             # stagger only parents with at least this many leaf children
 
 
@@ -60,9 +61,13 @@ def parse_target(value) -> float | None:
     return r
 
 
-def _ok(ratio: float, target: float) -> bool:
-    """Close enough to the target, and inside the 1:2..2:1 band a figure keeps."""
-    return target / TOLERANCE <= ratio <= target * TOLERANCE and 0.5 <= ratio <= 2.0
+BAND = (0.5, 2.0)        # what a figure (print, export) keeps
+SCREEN_BAND = (0.5, 3.0)  # on screen: a wide window may be filled
+
+
+def _ok(ratio: float, target: float, band: tuple = BAND) -> bool:
+    """Not too far from the target, and inside the band."""
+    return max(band[0], target / TOLERANCE) <= ratio <= min(band[1], target * TOLERANCE)
 
 
 def _miss(ratio: float, target: float) -> float:
@@ -137,7 +142,7 @@ def wrap_ranks(pos: dict[str, tuple], max_width: int) -> list[tuple[str, str]]:
 
 
 def fit(m: UModel, render_text, dot_bin: str, env, target: float,
-        max_rank_width: int = 12) -> tuple[LayoutOptions, dict]:
+        max_rank_width: int = 12, band: tuple = BAND) -> tuple[LayoutOptions, dict]:
     """Choose layout options for ``target`` width/height.
 
     ``render_text(opts) -> str`` produces the DOT for a set of options.
@@ -153,30 +158,36 @@ def fit(m: UModel, render_text, dot_bin: str, env, target: float,
     opts, steps = LayoutOptions(), []
     ratio, pos = attempt(opts, steps)
     start = ratio
-    if not _ok(ratio, target) and ratio > target:
+    if not _ok(ratio, target, band) and ratio > target:
         ids = {cid: f"n{i}" for i, cid in enumerate(m.classes)}
         width = max_rank_width
-        while not _ok(ratio, target) and ratio > target and width >= 2:
+        while not _ok(ratio, target, band) and ratio > target and width >= 2:
             trees = sibling_trees(m, ids, width)
             if trees:
                 opts = LayoutOptions(trees=trees)
                 steps = [f"sibling rows of {width}"]
                 ratio, pos = attempt(opts, steps)
             width = width - 1 if width <= 4 else int(width * 0.7)
+        # Wrapping moves classes off their hierarchy level, so it is used
+        # sparingly: never below MIN_WRAP classes per row.
         width = max_rank_width
-        while not _ok(ratio, target) and ratio > target and width >= 2:
+        while not _ok(ratio, target, band) and ratio > target and width >= MIN_WRAP:
             extra = wrap_ranks(pos, width)
             if extra:
                 opts = LayoutOptions(trees=opts.trees, invisible=opts.invisible + extra)
                 steps = steps + [f"wrapped ranks wider than {width}"]
                 ratio, pos = attempt(opts, steps)
-            width = width - 1 if width <= 4 else int(width * 0.7)
+            width = MIN_WRAP if width > MIN_WRAP and int(width * 0.7) < MIN_WRAP \
+                else int(width * 0.7)
     if ratio < 0.5:
         # far too tall: a sideways layout. Never for a wide one -- class
         # hierarchies read top-down, and wrapping has already done its best.
         attempt(LayoutOptions(rankdir="RL"), ["laid out sideways"])
-    opts, steps, ratio = min(tried, key=lambda t: (not _ok(t[2], target),
-                                                   not 0.5 <= t[2] <= 2.0, _miss(t[2], target)))
+    # The first acceptable layout is the least changed one; otherwise the
+    # closest to the target.
+    good = [t for t in tried if _ok(t[2], target, band)]
+    opts, steps, ratio = good[0] if good else min(
+        tried, key=lambda t: (not band[0] <= t[2] <= band[1], _miss(t[2], target)))
     report = {"target": round(target, 2), "start": round(start, 2), "ratio": round(ratio, 2),
-              "steps": steps, "within_band": 0.5 <= ratio <= 2.0}
+              "steps": steps, "within_band": band[0] <= ratio <= band[1]}
     return opts, report

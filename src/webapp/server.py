@@ -170,7 +170,7 @@ def render():
             for_print = request.form.get("fmt") in ("svg-static", "pdf", "png", "tikz")
             svg = render_dot_svg(model, source=src, definitions=_flag("definitions"),
                                  chains=_flag("chains"), coverage=cov, aspect=_aspect(),
-                                 pins=pins, for_print=for_print)
+                                 pins=pins, for_print=for_print, screen=True)
             engine = "graphviz"
         else:
             w, h = layout(model)
@@ -204,13 +204,13 @@ def render():
 
 def _aspect():
     """Target width/height: the browser sends its drawing area's ratio
-    ("aspect"), so the layout uses the space available. Clamped to the
-    1:2 .. 2:1 range a figure should keep."""
+    ("aspect"), so the layout uses the space available (up to 3:1 on screen;
+    exports keep 1:2 .. 2:1)."""
     try:
         r = parse_target(request.form.get("aspect") or "auto")
     except ValueError:
         r = parse_target("auto")
-    return min(2.0, max(0.5, r)) if r else None
+    return min(3.0, max(0.5, r)) if r else None
 
 
 def _figure(fmt: str, model, svg: str, graph, engine: str):

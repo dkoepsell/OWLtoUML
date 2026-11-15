@@ -14,7 +14,7 @@ from .source import embed as embed_source
 from .model import UModel, UClass
 from .postprocess import shade, tint
 from . import pinning, twopass
-from .aspect import fit
+from .aspect import BAND, SCREEN_BAND, fit
 from .legend import INFERRED_COLOR, legend as _legend
 from .tools import graphviz
 
@@ -387,7 +387,9 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
                    source: dict | None = None, definitions: bool = False,
                    chains: bool = False, coverage: dict | None = None,
                    aspect: float | None = None, max_rank_width: int = 12,
-                   pins: dict[str, tuple] | None = None, for_print: bool = False) -> str:
+                   pins: dict[str, tuple] | None = None, for_print: bool = False,
+                   screen: bool = False) -> str:
+    """``screen``: fit a browser window (up to 3:1) rather than a figure (2:1)."""
     """Render with Graphviz.
 
     ``compact_labels``: "auto" (diagrams of 40+ classes), "on", "off". When on,
@@ -411,7 +413,8 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
     if aspect and engine == "dot" and len(m.classes) > 2:
         try:
             layout, m.layout_report = fit(m, lambda o: twopass.skeleton(text(o)), dot, env,
-                                          aspect, max_rank_width)
+                                          aspect, max_rank_width,
+                                          SCREEN_BAND if screen and not for_print else BAND)
         except subprocess.TimeoutExpired:
             layout = None
     src = text(layout).encode("utf-8")

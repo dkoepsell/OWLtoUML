@@ -235,9 +235,49 @@ def merge_edges(m: UModel) -> None:
     m.edges = out
 
 
+def order_for_layout(m: UModel) -> None:
+    """Put classes in hierarchy order: depth first from the top classes,
+    siblings grouped by module/group then name, anonymous nodes right after
+    the class they belong to. Graphviz keeps related classes together when
+    they arrive in this order, and the result is the same on every run."""
+    children: dict[str, list[str]] = {}
+    has_parent = set()
+    for e in m.edges:
+        if e.kind in HIERARCHY_KINDS and e.src in m.classes and e.dst in m.classes \
+                and e.src != e.dst:
+            children.setdefault(e.dst, []).append(e.src)
+            has_parent.add(e.src)
+    key = lambda cid: (m.classes[cid].group, m.classes[cid].name.lower(), cid)  # noqa: E731
+    owned: dict[str, list[str]] = {}
+    for cid, c in m.classes.items():
+        if c.kind in ANON_KINDS and c.owner in m.classes:
+            owned.setdefault(c.owner, []).append(cid)
+    order: list[str] = []
+    seen: set[str] = set()
+
+    def visit(cid: str) -> None:
+        stack = [cid]
+        while stack:
+            x = stack.pop()
+            if x in seen:
+                continue
+            seen.add(x)
+            order.append(x)
+            order.extend(a for a in owned.get(x, []) if a not in seen)
+            seen.update(owned.get(x, []))
+            stack.extend(sorted(set(children.get(x, [])) - seen, key=key, reverse=True))
+
+    for root in sorted((c for c in m.classes if c not in has_parent
+                        and m.classes[c].kind not in ANON_KINDS), key=key):
+        visit(root)
+    order += sorted((c for c in m.classes if c not in seen), key=lambda c: c)
+    m.classes = {cid: m.classes[cid] for cid in order}
+
+
 def postprocess(m: UModel, prune: bool = True) -> dict:
     """Run all steps; return a small report for the CLI/web UI."""
     assign_groups(m)
     removed = prune_unused(m) if prune else 0
     merge_edges(m)
+    order_for_layout(m)
     return {"pruned": removed}

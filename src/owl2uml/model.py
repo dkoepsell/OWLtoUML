@@ -68,6 +68,8 @@ class Group:
     color: str = ""
     count: int = 0
     upper: bool = False    # imported upper-level / external vocabulary
+    iri: str = ""          # for a group made from an owl:imports ontology
+    version_iri: str = ""
 
 
 @dataclass
@@ -76,6 +78,10 @@ class UModel:
     edges: list[Edge] = field(default_factory=list)
     groups: dict[str, Group] = field(default_factory=dict)
     ontology_iri: str = ""
+    # from the loader (load.annotate_model): resolved owl:imports, and which
+    # imported ontology each entity not declared in the main one came from
+    imports: list[dict] = field(default_factory=list)
+    import_of: dict[str, str] = field(default_factory=dict)
 
     def cls(self, cid: str, name: str | None = None) -> UClass:
         """Get or create a class node by id."""

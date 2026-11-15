@@ -50,6 +50,7 @@ async function renderFile(file) {
   const fd = new FormData();
   fd.append("file", file);
   fd.append("format", $("format").value);
+  fd.append("imports", $("imports").value);
   if ($("keepUnused").checked) fd.append("keep_unused", "1");
   if ($("reason").checked) fd.append("reason", "auto");
   if (flow) {
@@ -91,7 +92,8 @@ async function renderFile(file) {
   const groups = data.groups && data.groups.length > 1 ? ` · ${data.groups.length} groups` : "";
   setStatus(
     `${file.name} — ${data.classes} classes, ${data.edges} relations${groups}${pruned} · engine: ${data.engine}` +
-    reasoningNote(data.reasoning) + editsNote(data.edits),
+    loaderNote(data.loader) + reasoningNote(data.reasoning) + editsNote(data.edits),
+    !!(data.loader && data.loader.warnings.length) ||
     !!(data.reasoning && (data.reasoning.error || data.reasoning.inconsistent)) ||
     !!(data.edits && data.edits.skipped.length)
   );
@@ -103,6 +105,49 @@ async function renderFile(file) {
 }
 
 // ---- edit mode -----------------------------------------------------------------
+// Which loader read the file, and how many of its imports could be loaded.
+function loaderNote(l) {
+  if (!l) return "";
+  const by = l.loader === "robot" ? "OWL API (ROBOT)" : "rdflib";
+  let note = ` · read as ${l.syntax} by ${by}`;
+  if (l.imports.length) {
+    const ok = l.imports.filter((i) => !i.error).length;
+    note += ` · ${ok} of ${l.imports.length} import(s) loaded`;
+    const failed = l.imports.filter((i) => i.error).map((i) => i.iri);
+    if (failed.length) note += ` (missing: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""})`;
+  }
+  return note;
+}
+
+// Load an ontology by IRI: the server fetches it (public hosts only) and the
+// page then treats it exactly like an uploaded file.
+async function loadIri(iri) {
+  if (!iri) return;
+  showOverlay("Fetching…");
+  setStatus(`Fetching ${iri}…`);
+  const fd = new FormData();
+  fd.append("iri", iri);
+  let res;
+  try {
+    res = await fetch("/api/fetch", { method: "POST", body: fd });
+  } catch (e) {
+    hideOverlay();
+    setStatus(`Network error: ${e.message}`, true);
+    return;
+  }
+  if (!res.ok) {
+    hideOverlay();
+    let msg = `Could not fetch ${iri} (${res.status})`;
+    try { msg = (await res.json()).error || msg; } catch (e) { /* not JSON */ }
+    setStatus(msg, true);
+    return;
+  }
+  const blob = await res.blob();
+  const name = res.headers.get("X-Filename") || "ontology.owl";
+  hideOverlay();
+  renderFile(new File([blob], name));
+}
+
 function editsNote(r) {
   if (!r) return "";
   const sk = r.skipped.length ? `, ${r.skipped.length} could not be applied (${editor.skipped(r.skipped).join("; ")})` : "";
@@ -426,6 +471,11 @@ window.addEventListener("DOMContentLoaded", () => {
     const f = e.target.files[0];
     e.target.value = "";          // allow re-selecting the same file later
     renderFile(f);
+  });
+
+  $("iriForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    loadIri($("iri").value.trim());
   });
 
   // Toolbar "Open…" lets you load another ontology without reloading the app.

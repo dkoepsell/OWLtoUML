@@ -52,4 +52,12 @@ else
   echo "==> No Java runtime: skipping ROBOT (rdflib loader will be used)"
 fi
 
+if [ -f "$ROBOT_JAR" ]; then
+  echo "==> Compiling the O2uConvert loader helper"
+  mkdir -p "$PREFIX/o2u"
+  java -m jdk.compiler/com.sun.tools.javac.Main -nowarn -cp "$ROBOT_JAR" \
+    -d "$PREFIX/o2u" src/owl2uml/java/O2uConvert.java \
+    || echo "    (no JDK compiler: the helper will run from source, a little slower)"
+fi
+
 echo "==> Done. Run the web UI with:  ./serve"

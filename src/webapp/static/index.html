@@ -63,12 +63,17 @@
       <div class="drop-inner">
         <div class="drop-icon">⬇</div>
         <h1>Drop an ontology to diagram it</h1>
-        <p>OWL/RDF-XML · TTL · RDF/XML · N3 · N-Triples · JSON-LD · TriG</p>
-        <p class="hint">OWL/XML (.owx), Manchester (.omn) and Functional (.ofn) syntax are not supported — re-export as RDF/XML or Turtle.</p>
+        <p>RDF/XML · Turtle · OWL/XML · Manchester · Functional · OBO · N3 · N-Triples · JSON-LD · TriG</p>
+        <p class="hint">Imports are loaded from the web (public hosts only). Max 25 MB, 60 s.</p>
         <label class="filebtn">
           Choose file
-          <input type="file" id="file" accept=".owl,.ttl,.rdf,.xml,.n3,.nt,.jsonld,.json,.trig" hidden />
+          <input type="file" id="file" accept=".owl,.ttl,.rdf,.xml,.n3,.nt,.jsonld,.json,.trig,.owx,.omn,.ofn,.obo" hidden />
         </label>
+        <form class="fmtrow iriform" id="iriForm">
+          <label for="iri">or load from IRI</label>
+          <input type="url" id="iri" placeholder="https://w3id.org/…/ontology.owl" />
+          <button type="submit">Load</button>
+        </form>
         <div class="fmtrow">
           <label for="format">Format</label>
           <select id="format">
@@ -79,6 +84,16 @@
             <option value="nt">n-triples</option>
             <option value="json-ld">json-ld</option>
             <option value="trig">trig</option>
+            <option value="owx">owl/xml</option>
+            <option value="omn">manchester</option>
+            <option value="ofn">functional</option>
+            <option value="obo">obo</option>
+          </select>
+          <label for="imports" title="Which owl:imports to load and draw">Imports</label>
+          <select id="imports">
+            <option value="closure">all (closure)</option>
+            <option value="direct">direct only</option>
+            <option value="none">none</option>
           </select>
         </div>
         <div class="fmtrow">

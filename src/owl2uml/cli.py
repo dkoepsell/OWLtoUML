@@ -5,6 +5,7 @@ import argparse
 import sys
 
 from .parse import load_graph, parse_ontology
+from .load import IMPORT_MODES, LOADERS, annotate_model, load
 from . import reason
 from .postprocess import postprocess
 from .layout import layout
@@ -16,14 +17,31 @@ from .source import build_source, inline_viewer
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="owl2uml",
-        description="Convert an OWL/RDFS ontology (.owl/.ttl/.rdf) to a UML "
-                    "class diagram in SVG.",
+        description="Convert an OWL/RDFS ontology to a UML class diagram in SVG. "
+                    "Reads RDF/XML, Turtle, N3, N-Triples, JSON-LD and TriG, and "
+                    "with Java + ROBOT also OWL/XML, Manchester, Functional and OBO.",
     )
-    ap.add_argument("input", help="path to the ontology file")
+    ap.add_argument("input", nargs="?", help="path to the ontology file")
+    ap.add_argument("--iri", metavar="URL",
+                    help="load the ontology from an http(s) IRI instead of a file "
+                         "(e.g. a w3id or PURL)")
+    ap.add_argument("--imports", choices=IMPORT_MODES, default="closure",
+                    help="which owl:imports to load: none, the direct ones, or the "
+                         "whole closure (default). Looked up in the catalog, then the "
+                         "ontology's directory, then the network")
+    ap.add_argument("--catalog", metavar="FILE",
+                    help="XML catalog for imports (default: catalog-v001.xml next to "
+                         "the ontology)")
+    ap.add_argument("--offline", action="store_true",
+                    help="never fetch imports over the network")
+    ap.add_argument("--loader", choices=LOADERS, default="auto",
+                    help="'robot' sends every syntax through the OWL API (Java); "
+                         "'rdflib' never starts Java; 'auto' (default) uses rdflib for "
+                         "RDF syntaxes and the OWL API for the rest")
     ap.add_argument("-o", "--output", help="output .svg path (default: <input>.svg)")
     ap.add_argument("-f", "--format",
-                    help="rdflib input format (turtle, xml, n3, ...); "
-                         "auto-detected from extension if omitted")
+                    help="input syntax: turtle, xml, n3, nt, json-ld, trig, owx, omn, "
+                         "ofn or obo; detected from the content if omitted")
     ap.add_argument("-e", "--engine", choices=["auto", "dot", "builtin"],
                     default="auto",
                     help="layout engine: 'dot' (graphviz, scalable), 'builtin' "
@@ -62,17 +80,22 @@ def main(argv: list[str] | None = None) -> int:
                       help="JSON mapping of which relations count as sequence, lane and "
                            "case (default: BFO 2020 and RO relations)")
     args = ap.parse_args(argv)
+    if bool(args.input) == bool(args.iri):
+        ap.error("give either an input file or --iri (not both)")
 
-    out = args.output or _default_out(args.input)
+    out = args.output or _default_out(args.input or _iri_stem(args.iri))
     if args.flow or args.events or args.shapes:
         return _flow(args, out)
 
     try:
-        graph = load_graph(args.input, fmt=args.format)
-        model = parse_ontology(args.input, graph=graph)
+        loaded = _load(args)
+        graph = loaded.merge()
+        model = parse_ontology(args.input or args.iri, graph=graph)
+        annotate_model(model, loaded)
     except Exception as exc:  # noqa: BLE001 - surface parse errors clearly
-        print(f"error: failed to parse '{args.input}': {exc}", file=sys.stderr)
+        print(f"error: failed to load '{args.input or args.iri}': {exc}", file=sys.stderr)
         return 1
+    _report_load(loaded)
 
     inf = reason.classify(graph, args.reason)
     reason.apply(model, inf)
@@ -127,7 +150,7 @@ def _flow(args, out: str) -> int:
         print("error: the flow view needs graphviz (dot and neato)", file=sys.stderr)
         return 1
     try:
-        tbox = load_graph(args.input, fmt=args.format)
+        tbox = _load(args).merge()
         events = None
         for path in args.events:
             events = events if events is not None else Graph()
@@ -153,6 +176,25 @@ def _flow(args, out: str) -> int:
             (f", {s['findings']} SHACL findings" if s["shapes"] else "")
     print(f"wrote {out}  (flow: {s['steps']} steps in {s['lanes']} lanes{extra})")
     return 0
+
+
+def _load(args):
+    return load(args.input or args.iri, fmt=args.format, imports=args.imports,
+                loader=args.loader, catalog=args.catalog, allow_network=not args.offline)
+
+
+def _report_load(loaded) -> None:
+    """Say which loader ran, and what happened to each import."""
+    ok = [i for i in loaded.imports if not i["error"]]
+    imp = f", {len(ok)} of {len(loaded.imports)} imports loaded" if loaded.imports else ""
+    print(f"loader: {loaded.loader} ({loaded.syntax} syntax){imp}", file=sys.stderr)
+    for w in loaded.warnings:
+        print(f"warning: {w}", file=sys.stderr)
+
+
+def _iri_stem(iri: str) -> str:
+    tail = iri.rstrip("/#").rsplit("/", 1)[-1] or "ontology"
+    return tail
 
 
 def _default_out(inp: str) -> str:

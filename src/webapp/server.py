@@ -9,14 +9,15 @@ import json
 import os
 import re
 import sys
-import tempfile
 
 from flask import Flask, Response, request, jsonify, send_from_directory
 
 # Make the sibling `owl2uml` package importable.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from owl2uml.parse import load_graph, parse_ontology  # noqa: E402
+from owl2uml.parse import parse_ontology            # noqa: E402
+from owl2uml.load import IMPORT_MODES, LoadError, annotate_model, load  # noqa: E402
+from owl2uml.fetch import FetchError, fetch          # noqa: E402
 from owl2uml import reason                         # noqa: E402
 from owl2uml.postprocess import postprocess       # noqa: E402
 from owl2uml.dot import dot_available, render_dot_svg  # noqa: E402
@@ -32,6 +33,41 @@ app = Flask(__name__, static_folder=STATIC, static_url_path="/static")
 # endpoint; keep it <= nginx client_max_body_size).
 _max_mb = int(os.environ.get("MAX_UPLOAD_MB", "25"))
 app.config["MAX_CONTENT_LENGTH"] = _max_mb * 1024 * 1024
+# Wall-clock budget for loading one ontology (conversion, imports, fetching).
+LOAD_TIMEOUT = float(os.environ.get("LOAD_TIMEOUT_S", "60"))
+
+
+@app.errorhandler(413)
+def too_large(_exc):
+    return jsonify(error=f"the upload is larger than the {_max_mb} MB limit"), 413
+
+
+def _load_upload(data: bytes, name: str, fmt=None, imports: str = "closure"):
+    """Load uploaded bytes like the CLI does. Imports may come from the network
+    (public hosts only); there is no local directory or catalog on the server."""
+    return load(data=data, name=name, fmt=fmt, imports=imports, allow_network=True,
+                allow_private=False, timeout=LOAD_TIMEOUT, max_bytes=_max_mb * 2**20)
+
+
+@app.post("/api/fetch")
+def fetch_iri():
+    """Fetch an ontology by IRI (w3id, PURL, ...) for the browser to render as
+    if it had been uploaded. Public http(s) hosts only."""
+    iri = (request.form.get("iri") or "").strip()
+    if not iri:
+        return jsonify(error="no IRI given"), 400
+    try:
+        got = fetch(iri, max_bytes=_max_mb * 2**20, timeout=LOAD_TIMEOUT, allow_private=False)
+    except FetchError as exc:
+        return jsonify(error=str(exc)), 400
+    tail = got.url.split("?", 1)[0].rstrip("/").rsplit("/", 1)[-1] or "ontology"
+    if "." not in tail:
+        tail += {"xml": ".owl", "owx": ".owx", "ofn": ".ofn", "omn": ".omn",
+                 "json-ld": ".jsonld"}.get(got.syntax or "", ".ttl" if got.syntax else ".owl")
+    resp = Response(got.data, mimetype="application/octet-stream")
+    resp.headers["X-Filename"] = re.sub(r"[^A-Za-z0-9._-]+", "_", tail)
+    resp.headers["X-Final-Url"] = got.url
+    return resp
 
 
 @app.get("/")
@@ -69,19 +105,17 @@ def render():
     except ValueError as exc:
         return jsonify(error=str(exc)), 400
 
-    tmp_path = None
+    imports = request.form.get("imports") or "closure"
+    imports = imports if imports in IMPORT_MODES else "closure"
     edit_report = None
     try:
-        with tempfile.NamedTemporaryFile(
-            delete=False, suffix=suffix, mode="wb"
-        ) as tmp:
-            tmp.write(data)
-            tmp_path = tmp.name
-
-        graph = load_graph(tmp_path, fmt=fmt)
+        loaded = _load_upload(data, "upload" + suffix, fmt, imports)
         if ops:
-            edit_report = editing.apply_edits(graph, ops)
-        model = parse_ontology(tmp_path, graph=graph)
+            # edits change the uploaded ontology only, never its imports
+            edit_report = editing.apply_edits(loaded.graph, ops)
+        graph = loaded.merge()
+        model = parse_ontology("upload" + suffix, graph=graph)
+        annotate_model(model, loaded)
         engine_req = request.form.get("reason") or "none"
         if engine_req not in reason.ENGINES:
             engine_req = "none"
@@ -90,11 +124,10 @@ def render():
         # "keep_unused=1" keeps imported upper-level classes the ontology
         # never reaches (left out by default).
         report = postprocess(model, prune=request.form.get("keep_unused") not in ("1", "true", "on"))
+    except LoadError as exc:
+        return jsonify(error=str(exc), syntax=exc.syntax, line=exc.line), 400
     except Exception as exc:  # noqa: BLE001
         return jsonify(error=f"parse failed: {exc}"), 400
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            os.unlink(tmp_path)
 
     try:
         if dot_available():
@@ -123,8 +156,10 @@ def render():
         pruned=report["pruned"],
         reasoning=inf.report(),
         edits=edit_report,
+        loader=loaded.report(),
         groups=[
-            {"name": g.name, "color": g.color, "count": g.count, "upper": g.upper}
+            {"name": g.name, "color": g.color, "count": g.count, "upper": g.upper,
+             "iri": g.iri, "version_iri": g.version_iri}
             for g in sorted(model.groups.values(), key=lambda g: (g.upper, g.name))
         ],
     )
@@ -180,14 +215,9 @@ def export():
     return resp
 
 
-def _parse_upload(data: bytes, suffix: str, fmt=None):
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, mode="wb") as tmp:
-        tmp.write(data)
-        path = tmp.name
-    try:
-        return load_graph(path, fmt=fmt)
-    finally:
-        os.unlink(path)
+def _parse_upload(data: bytes, suffix: str, fmt=None, imports: str = "none"):
+    """The uploaded ontology as one graph (with its imports merged, if asked)."""
+    return _load_upload(data, "upload" + suffix, fmt, imports).merge()
 
 
 def _suffix(f) -> str:
@@ -202,7 +232,7 @@ def _render_flow(data: bytes, suffix: str, fmt):
     if not dot_available():
         return jsonify(error="the flow view needs Graphviz on the server"), 500
     try:
-        tbox = _parse_upload(data, suffix, fmt)
+        tbox = _parse_upload(data, suffix, fmt, request.form.get("imports") or "closure")
         events = None
         for f in request.files.getlist("events"):
             events = events if events is not None else Graph()

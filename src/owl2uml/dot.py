@@ -158,9 +158,14 @@ def _legend(m: UModel) -> str:
     rows = ['<tr><td colspan="2" align="left"><b>Key</b></td></tr>']
     for g in sorted(m.groups.values(), key=lambda g: (g.upper, g.name)):
         note = " (imported)" if g.upper else ""
+        ident = ""
+        if g.iri:
+            # an owl:imports ontology: show which version was drawn
+            ident = (f'<br/><font point-size="9" color="#6b675e">'
+                     f'{_h(g.version_iri or g.iri)}</font>')
         rows.append(
             f'<tr><td bgcolor="{g.color}" width="14"> </td>'
-            f'<td align="left">{_h(g.name)}{note} · {g.count}</td></tr>')
+            f'<td align="left">{_h(g.name)}{note} · {g.count}{ident}</td></tr>')
     inferred = any(e.kind == "inferred" for e in m.edges)
     unsat = any(c.unsatisfiable for c in m.classes.values())
     extra = ""

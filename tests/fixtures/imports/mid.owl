@@ -1,0 +1,11 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Found next to main.ttl by its file name (local-directory resolution);
+# Turtle content in a .owl file, so the syntax comes from sniffing.
+<http://example.net/mid.owl> a owl:Ontology ;
+    owl:versionIRI <http://example.net/mid/2026-01-01/mid.owl> ;
+    owl:imports <http://example.com/upper> .
+
+<http://example.net/mid#Animal> a owl:Class ;
+    rdfs:subClassOf <http://example.com/upper#Thing2> .

@@ -63,51 +63,6 @@ def _display(term, labels: dict[URIRef, str]) -> str:
     return BFO_LABELS.get(name, name)
 
 
-# Formats to try, in order, when auto-detection is requested or the
-# extension-guessed format fails (e.g. a `.owl` file that is actually Turtle).
-_FALLBACK_FORMATS = ("xml", "turtle", "n3", "nt", "json-ld", "trig")
-
-
-def _parse_graph(path: str, fmt: str | None) -> Graph:
-    """Parse into a Graph, trying fallback formats when fmt is unspecified.
-
-    rdflib guesses the serialization from the file extension, which fails for
-    mislabeled files (a Turtle ontology saved as `.owl`, etc.). When no explicit
-    format is given we let rdflib guess first, then fall back through the common
-    serializations so a wrong extension doesn't block rendering.
-    """
-    if fmt:
-        g = Graph()
-        g.parse(path, format=fmt)
-        return g
-
-    errors: list[str] = []
-    # 1. Let rdflib guess from the extension.
-    try:
-        g = Graph()
-        g.parse(path)
-        return g
-    except Exception as exc:  # noqa: BLE001
-        errors.append(f"auto: {exc}")
-
-    # 2. Try each known serialization explicitly.
-    for candidate in _FALLBACK_FORMATS:
-        try:
-            g = Graph()
-            g.parse(path, format=candidate)
-            return g
-        except Exception as exc:  # noqa: BLE001
-            errors.append(f"{candidate}: {exc}")
-
-    raise ValueError(
-        "could not parse ontology in any known format. "
-        "If this is OWL/XML (.owx), Manchester (.omn) or Functional (.ofn) "
-        "syntax, rdflib cannot read it — re-export as RDF/XML or Turtle. "
-        "Tried:\n  " + "\n  ".join(errors)
-    )
-
-
-
 # ---------------------------------------------------------------------------
 # Class expressions
 #
@@ -195,13 +150,15 @@ def _is_datatype(g: Graph, node) -> bool:
 
 
 def load_graph(path: str, fmt: str | None = None) -> Graph:
-    """Parse a file into an rdflib Graph (with format fallbacks)."""
-    return _parse_graph(path, fmt)
+    """Parse one file into an rdflib Graph, without its imports. Any OWL 2
+    syntax is accepted (see load.py); use ``load.load`` for imports."""
+    from .load import load
+    return load(path, fmt=fmt, imports="none").graph
 
 
 def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None) -> UModel:
     """Build the UML model. Pass ``graph`` to reuse an already-parsed graph."""
-    g = graph if graph is not None else _parse_graph(path, fmt)
+    g = graph if graph is not None else load_graph(path, fmt)
 
     m = UModel()
     labels = _build_labels(g)
@@ -226,7 +183,8 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
 
     # --- 2. Subclass (generalization) edges -------------------------------
     for sub, sup in g.subject_objects(RDFS.subClassOf):
-        if isinstance(sub, URIRef) and isinstance(sup, URIRef):
+        # "subclass of owl:Thing" says nothing worth a box and a line
+        if isinstance(sub, URIRef) and isinstance(sup, URIRef) and sup != OWL.Thing:
             register_class(sub)
             register_class(sup)
             m.edges.append(Edge(src=str(sub), dst=str(sup), kind="generalization"))

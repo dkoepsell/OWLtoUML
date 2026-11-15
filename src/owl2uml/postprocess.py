@@ -69,6 +69,12 @@ def shade(hex_color: str, amount: float = 0.25) -> str:
     return "#{:02x}{:02x}{:02x}".format(mix(r), mix(g), mix(b))
 
 
+def _import_name(iri: str) -> str:
+    """'http://purl.obolibrary.org/obo/bfo.owl' -> 'bfo'."""
+    tail = iri.rstrip("/#").rsplit("/", 1)[-1] or iri
+    return re.sub(r"\.(owl|ttl|rdf|xml|obo|ofn|omn|owx|jsonld)$", "", tail) or iri
+
+
 def assign_groups(m: UModel) -> None:
     """Set ``UClass.group`` and build ``m.groups`` with colours.
 
@@ -79,9 +85,20 @@ def assign_groups(m: UModel) -> None:
     have_home = any(is_home(m, cid) for cid in m.classes)
     groups: dict[str, Group] = {}
     home_seen: dict[str, bool] = {}
+    # Classes that come from a resolved owl:imports ontology are grouped by
+    # that ontology (named after its IRI, with its version IRI in the key).
+    by_iri = {(i.get("ontology_iri") or i["iri"]): i for i in m.imports}
+    import_names = {src: _import_name(src) for src in set(m.import_of.values())}
     for cid, c in m.classes.items():
-        c.group = group_of(cid)
-        g = groups.setdefault(c.group, Group(name=c.group))
+        src = m.import_of.get(cid)
+        if src and not is_home(m, cid):
+            c.group = import_names[src]
+            g = groups.setdefault(c.group, Group(name=c.group))
+            g.iri = src
+            g.version_iri = by_iri.get(src, {}).get("version_iri", "")
+        else:
+            c.group = group_of(cid)
+            g = groups.setdefault(c.group, Group(name=c.group))
         g.count += 1
         home_seen[c.group] = home_seen.get(c.group, False) or is_home(m, cid)
     for name, g in groups.items():

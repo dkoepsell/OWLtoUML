@@ -1,0 +1,7 @@
+Prefix: : <http://example.org/main#>
+Prefix: mid: <http://example.net/mid#>
+Ontology: <http://example.org/main>
+Import: <http://example.net/mid.owl>
+
+Class: :Dog
+    SubClassOf: mid:Animal

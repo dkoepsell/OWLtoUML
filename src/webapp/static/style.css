@@ -127,6 +127,15 @@ main#stage { position: relative; flex: 1; overflow: hidden; }
   font-size: 0.85rem;
   color: var(--muted);
 }
+.iriform { display: flex; gap: 0.4rem; align-items: center; justify-content: center; flex-wrap: wrap; }
+.iriform input {
+  font: inherit;
+  width: min(22rem, 100%);
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.iriform button { font: inherit; padding: 0.25rem 0.7rem; cursor: pointer; }
 .fmtrow select {
   font: inherit;
   margin-left: 0.4rem;

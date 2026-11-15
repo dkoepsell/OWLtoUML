@@ -1,0 +1,5 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+
+# Mapped by catalog-v001.xml (the IRI has no file name to find it by).
+<http://example.com/upper> a owl:Ontology .
+<http://example.com/upper#Thing2> a owl:Class .

@@ -13,6 +13,7 @@ from pathlib import Path
 from .source import embed as embed_source
 from .model import UModel, UClass
 from .postprocess import DEFAULT_COLOR, UPPER_COLOR, shade, tint
+from . import twopass
 from .aspect import fit
 from .tools import graphviz
 
@@ -297,6 +298,7 @@ def _property_rows(m: UModel) -> list[str]:
 
 
 BACKGROUND = "#f7f5ef"
+NODESEP, RANKSEP = 0.3, 0.55   # inches between boxes / ranks: compact by default
 
 
 def _apply_layout(lines: list[str], layout) -> None:
@@ -323,7 +325,7 @@ def _apply_layout(lines: list[str], layout) -> None:
             up = parent if r == 0 else f"j{t}_{r - 1}"
             head = "empty" if r == 0 else "none"
             lines.append(f'  j{t}_{r} -> {up} [arrowhead={head}, color="#33312e", '
-                         f'penwidth=1.2, class="rel-generalization rel-trunk"];')
+                         f'penwidth=1.2, id="t{t}_{r}", class="rel-generalization rel-trunk"];')
     for t, (parent, _rows) in enumerate(layout.trees):
         lines.append(f'  {parent} [group="tree{t}"];')
     if rows_of:
@@ -351,8 +353,8 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
         "digraph G {",
         overlap +
         f'  graph [rankdir={layout.rankdir if layout else "BT"}, bgcolor="{BACKGROUND}", '
-        f"splines={splines}, nodesep={layout.nodesep if layout else 0.4}, "
-        f"ranksep={layout.ranksep if layout else 0.7}, pad=0.3];",
+        f"splines={splines}, nodesep={layout.nodesep if layout else NODESEP}, "
+        f"ranksep={layout.ranksep if layout else RANKSEP}, pad=0.3];",
         '  node [shape=plaintext, fontname="Helvetica,Arial,sans-serif", fontsize=12];',
         '  edge [fontname="Helvetica,Arial,sans-serif", fontsize=10];',
     ]
@@ -493,20 +495,30 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
     m.layout_report = {}
     if aspect and engine == "dot" and len(m.classes) > 2:
         try:
-            layout, m.layout_report = fit(m, text, dot, env, aspect, max_rank_width)
+            layout, m.layout_report = fit(m, lambda o: twopass.skeleton(text(o)), dot, env,
+                                          aspect, max_rank_width)
         except subprocess.TimeoutExpired:
             layout = None
     src = text(layout).encode("utf-8")
     if source is not None and coverage:
         source = dict(source, coverage=coverage)
-    try:
-        timeout = _DOT_TIMEOUT_S if engine == "dot" else None
-        proc = _run_engine(dot, engine, src, env, timeout)
-    except subprocess.TimeoutExpired:
-        # `dot` is too slow for this graph; fall back to the scalable engine.
-        proc = _run_engine(dot, "sfdp", src, env, None)
-
-    out = proc.stdout.decode("utf-8")
+    out = ""
+    if engine == "dot":
+        # Compact: rank on the hierarchy only, then route the other lines.
+        try:
+            out = twopass.render(src.decode("utf-8"), dot, graphviz("neato")[0], env,
+                                 _DOT_TIMEOUT_S) or ""
+        except (subprocess.TimeoutExpired, ValueError):
+            out = ""
+    proc = None
+    if "<svg" not in out:
+        try:
+            timeout = _DOT_TIMEOUT_S if engine == "dot" else None
+            proc = _run_engine(dot, engine, src, env, timeout)
+        except subprocess.TimeoutExpired:
+            # `dot` is too slow for this graph; fall back to the scalable engine.
+            proc = _run_engine(dot, "sfdp", src, env, None)
+        out = proc.stdout.decode("utf-8")
     # On large/dense graphs the engine may emit recoverable warnings (e.g.
     # "trouble in init_rank") and exit non-zero while still producing a valid
     # SVG. Accept the output whenever it actually contains an <svg> element.
@@ -518,4 +530,5 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
         out = out[:i - 1].replace("<svg", f'<svg style="background-color:{BACKGROUND}"', 1) + \
             out[i - 1:i] + "\n" + SVG_STYLE + out[i:]
         return embed_source(out, source) if source else out
-    raise RuntimeError(proc.stderr.decode("utf-8", "replace") or "dot produced no SVG")
+    raise RuntimeError((proc.stderr.decode("utf-8", "replace") if proc else "")
+                       or "dot produced no SVG")

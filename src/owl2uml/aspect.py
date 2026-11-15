@@ -39,8 +39,8 @@ class LayoutOptions:
     # Each row of children joins a junction point; junctions chain to the parent.
     trees: list[tuple[str, list[list[int]]]] = field(default_factory=list)
     rankdir: str = "BT"
-    nodesep: float = 0.4
-    ranksep: float = 0.7
+    nodesep: float = 0.3
+    ranksep: float = 0.55
 
 
 def parse_target(value) -> float | None:
@@ -171,7 +171,9 @@ def fit(m: UModel, render_text, dot_bin: str, env, target: float,
                 steps = steps + [f"wrapped ranks wider than {width}"]
                 ratio, pos = attempt(opts, steps)
             width = width - 1 if width <= 4 else int(width * 0.7)
-    if not _ok(ratio, target):
+    if ratio < 0.5:
+        # far too tall: a sideways layout. Never for a wide one -- class
+        # hierarchies read top-down, and wrapping has already done its best.
         attempt(LayoutOptions(rankdir="RL"), ["laid out sideways"])
     opts, steps, ratio = min(tried, key=lambda t: (not _ok(t[2], target),
                                                    not 0.5 <= t[2] <= 2.0, _miss(t[2], target)))

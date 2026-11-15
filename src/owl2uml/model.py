@@ -96,6 +96,8 @@ class UClass:
     deprecated: bool = False      # owl:deprecated true
     definition: str = ""          # IAO_0000115 / skos:definition / rdfs:comment
     axioms: list[str] = field(default_factory=list)  # axioms shown on the box itself
+    module: str = ""              # modules.assign
+    context: bool = False         # module view: shown for context only (greyed)
 
     # filled in by the layout pass
     x: float = 0.0
@@ -134,6 +136,7 @@ class UModel:
     # entities shown inside a box rather than as one (oneOf members) or named
     # in the key (super-properties, inverses): for the coverage report
     mentioned: set[str] = field(default_factory=set)
+    modules: dict[str, dict] = field(default_factory=dict)   # modules.assign
     layout_report: dict = field(default_factory=dict)  # aspect.fit: ratio and steps
 
     def cls(self, cid: str, name: str | None = None) -> UClass:

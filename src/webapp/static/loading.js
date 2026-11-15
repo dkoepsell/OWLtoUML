@@ -52,3 +52,21 @@ async function loadIri(iri) {
   hideOverlay();
   renderFile(new File([blob], name));
 }
+
+// Module picker: shown when the ontology has two or more modules of its own.
+function setupModules(data) {
+  const sel = $("module");
+  const own = (data.modules || []).filter((m) => !m.upper);
+  sel.hidden = own.length < 2 || data.view === "flow";
+  if (sel.hidden) return;
+  const keep = data.module || "";
+  sel.innerHTML = "";
+  const add = (value, text) => {
+    const o = document.createElement("option");
+    o.value = value; o.textContent = text; sel.appendChild(o);
+  };
+  add("", "All modules");
+  add("overview", "Overview of modules");
+  for (const m of own) add(m.id, `${m.id} (${m.count})`);
+  sel.value = keep;
+}

@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 
 from .parse import load_graph, parse_ontology, property_view
 from .load import IMPORT_MODES, LOADERS, annotate_model, load
-from . import coverage, reason
+from . import coverage, modules, reason
 from .aspect import parse_target
 from .postprocess import postprocess
 from .layout import layout
@@ -85,6 +86,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--coverage-out", metavar="FILE",
                     help="where to write the coverage report: what happened to every "
                          "axiom (default: <output>.coverage.json; '-' for none)")
+    mods = ap.add_argument_group("modules")
+    mods.add_argument("--view", metavar="module=ID",
+                      help="draw one module plus its context (direct superclasses and "
+                           "the far ends of its restrictions, greyed)")
+    mods.add_argument("--all-modules", action="store_true",
+                      help="write one SVG per module (<output>-<module>.svg) plus an "
+                           "overview of the modules (<output>-modules.svg)")
+    mods.add_argument("--list-modules", action="store_true",
+                      help="print the modules found and exit")
+    mods.add_argument("--module-property", metavar="IRI",
+                      help="annotation property naming a class's module (default "
+                           "https://w3id.org/lof/module); else IRI prefixes, imports, or "
+                           "community detection")
     flow = ap.add_argument_group("flow view (process ontologies)")
     flow.add_argument("--flow", action="store_true",
                       help="draw the processes as a flow in swimlanes instead of a class "
@@ -137,35 +151,38 @@ def main(argv: list[str] | None = None) -> int:
         print(f"coverage: {coverage.headline(cov)}"
               + (f" (see {cov_out})" if cov_out != "-" else ""), file=sys.stderr)
 
-    use_dot = args.engine == "dot" or (args.engine == "auto" and dot_available())
+    if args.view or args.all_modules or args.list_modules:
+        found = modules.assign(model, graph, args.module_property)
+        if args.list_modules:
+            for mid, info in found.items():
+                kind = " (imported)" if info["upper"] else ""
+                print(f"{mid}\t{len(info['members'])} classes\t{info['source']}{kind}")
+            return 0
     if args.engine == "dot" and not dot_available():
         print("error: --engine dot requested but graphviz 'dot' not found "
               "(run scripts/setup.sh)", file=sys.stderr)
         return 1
-
-    if use_dot:
-        src = None if (args.no_source or args.property_view) else build_source(graph, model)
-        svg = render_dot_svg(model, legend=not args.no_legend,
-                             compact_labels=args.compact_labels, source=src,
-                             definitions=args.show_definitions, chains=args.draw_chains,
-                             coverage=coverage.summary(cov) if cov else None,
-                             aspect=parse_target(args.aspect),
-                             max_rank_width=args.max_rank_width)
-        lr = model.layout_report
-        if lr:
-            how = ", ".join(lr["steps"]) or "no change needed"
-            print(f"aspect: {lr['start']}:1 -> {lr['ratio']}:1 (target {lr['target']}; {how})"
-                  + ("" if lr["within_band"] else " - still outside 1:2..2:1"), file=sys.stderr)
-        if args.interactive:
-            svg = inline_viewer(svg)
-        engine = "graphviz dot"
-    else:
-        w, h = layout(model)
-        svg = render_svg(model, w, h)
-        engine = "builtin"
-    with open(out, "w", encoding="utf-8") as fh:
-        fh.write(svg)
-    print(f"engine: {engine}", file=sys.stderr)
+    try:
+        if args.all_modules:
+            stem = out.rsplit(".", 1)[0]
+            figures = [(f"{stem}-modules.svg", modules.overview(model))]
+            figures += [(f"{stem}-{_safe(mid)}.svg", modules.view(model, mid))
+                        for mid, info in model.modules.items() if not info["upper"]]
+            for path, fig in figures:
+                _write(path, _render(args, graph, fig, None))
+                print(f"wrote {path}  ({len(fig.classes)} classes)")
+            return 0
+        if args.view:
+            kind, _, mid = args.view.partition("=")
+            if kind != "module" or not mid:
+                print("error: --view expects module=ID (see --list-modules)", file=sys.stderr)
+                return 1
+            model, cov = modules.view(model, mid), None
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    svg = _render(args, graph, model, cov)
+    _write(out, svg)
 
     pruned = f", {report['pruned']} unused imported classes left out" if report["pruned"] else ""
     if args.reason != "none":
@@ -217,6 +234,36 @@ def _flow(args, out: str) -> int:
             (f", {s['findings']} SHACL findings" if s["shapes"] else "")
     print(f"wrote {out}  (flow: {s['steps']} steps in {s['lanes']} lanes{extra})")
     return 0
+
+
+def _render(args, graph, model, cov) -> str:
+    """SVG for ``model``: Graphviz when available, else the builtin layout."""
+    if not (args.engine == "dot" or (args.engine == "auto" and dot_available())):
+        print("engine: builtin", file=sys.stderr)
+        w, h = layout(model)
+        return render_svg(model, w, h)
+    src = None if (args.no_source or args.property_view) else build_source(graph, model)
+    svg = render_dot_svg(model, legend=not args.no_legend,
+                         compact_labels=args.compact_labels, source=src,
+                         definitions=args.show_definitions, chains=args.draw_chains,
+                         coverage=coverage.summary(cov) if cov else None,
+                         aspect=parse_target(args.aspect),
+                         max_rank_width=args.max_rank_width)
+    lr = model.layout_report
+    if lr:
+        how = ", ".join(lr["steps"]) or "no change needed"
+        print(f"aspect: {lr['start']}:1 -> {lr['ratio']}:1 (target {lr['target']}; {how})"
+              + ("" if lr["within_band"] else " - still outside 1:2..2:1"), file=sys.stderr)
+    return inline_viewer(svg) if args.interactive else svg
+
+
+def _write(path: str, text: str) -> None:
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(text)
+
+
+def _safe(name: str) -> str:
+    return re.sub(r"[^A-Za-z0-9._-]+", "_", name) or "module"
 
 
 def _load(args):

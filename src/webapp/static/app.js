@@ -45,6 +45,7 @@ async function renderFile(file) {
     restore = editor.bindFile(file);
     exportedAt = 0;
   }
+  if (file !== lastFile) $("module").value = "";   // a new ontology starts whole
   lastFile = file;
   const flow = $("view").value === "flow";
   const fd = new FormData();
@@ -52,6 +53,7 @@ async function renderFile(file) {
   fd.append("format", $("format").value);
   fd.append("imports", $("imports").value);
   fd.append("aspect", stageAspect());
+  if ($("module").value) fd.append("module", $("module").value);
   if ($("keepUnused").checked) fd.append("keep_unused", "1");
   if ($("reason").checked) fd.append("reason", "auto");
   if ($("definitions").checked) fd.append("definitions", "1");
@@ -84,6 +86,7 @@ async function renderFile(file) {
   lastName = file.name.replace(/\.[^.]+$/, "") || "diagram";
   mountSvg(data.svg);
   resetStretch();
+  setupModules(data);
   setupFlow(data);
   if (data.view === "flow") {
     const f = data.flow;
@@ -434,6 +437,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("zoomOut").addEventListener("click", () => panZoom && panZoom.zoomOut());
   $("fit").addEventListener("click", refit);
   $("stretchX").addEventListener("input", () => onStretch("x"));
+  $("module").addEventListener("change", () => { if (lastFile) renderFile(lastFile); });
   $("stretchY").addEventListener("input", () => onStretch("y"));
   $("download").addEventListener("click", downloadSvg);
   $("clearFocus").addEventListener("click", () => interact && interact.clear());

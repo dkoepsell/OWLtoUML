@@ -98,7 +98,7 @@ def _label(c: UClass, color: str = "", definitions: bool = False) -> str:
     """HTML-like table label for one UML class box (PlantUML-style)."""
     color = color or _ICON_BG
     header_bg = _HEADER_BG if color.lower() == _ICON_BG.lower() else tint(color)
-    if c.deprecated:
+    if c.deprecated or c.context:
         color, header_bg = _DEPRECATED, "#e8e6e0"
     title = ""
     stereo = c.stereotype or ("unsatisfiable" if c.unsatisfiable else
@@ -111,6 +111,9 @@ def _label(c: UClass, color: str = "", definitions: bool = False) -> str:
         title += '<font point-size="9">&#171;deprecated&#187;</font><br/>'
         title += "<br/>".join(f'<s><font color="#6b675e">{_h(line)}</font></s>'
                               for line in _wrap(c.name))
+    elif c.context:
+        # module view: a class outside the module, shown for context
+        title += "<br/>".join(f'<font color="#6b675e">{_h(line)}</font>' for line in _wrap(c.name))
     else:
         title += "<br/>".join(f"<b>{_h(line)}</b>" for line in _wrap(c.name))
     # Header: green class icon to the left of the (optionally stereotyped) name.
@@ -167,6 +170,7 @@ def _node(nid: str, cid: str, c: UClass, color: str, gcls: str, defcls: str,
                 f'class="uml-class individual"];')
     extra = " anon" if c.kind == "enumeration" else ""
     extra += " deprecated" if c.deprecated else ""
+    extra += " context" if c.context else ""
     return (f'  {nid} [label=<{_label(c, color, definitions)}>, tooltip="{_attr(cid)}", '
             f'id="{nid}", class="uml-class{gcls}{defcls}{extra}"];')
 
@@ -289,7 +293,7 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
         if e.kind == "generalization":
             # A generalization set (DisjointUnion) shares one arrowhead.
             gs = (f', samehead="{e.genset}", label="{_attr(e.label)}", fontsize=9'
-                  if e.genset else "")
+                  if e.genset else f', label="{_attr(e.label)}"' if e.label else "")
             lines.append(
                 f'  {s} -> {d} [arrowhead=empty, color="#33312e", penwidth=1.2{gs}, '
                 f'id="e{i}", class="rel-generalization", tooltip="subclass of"];'

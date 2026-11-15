@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from owl2uml.parse import parse_ontology, property_view  # noqa: E402
 from owl2uml.load import IMPORT_MODES, LoadError, annotate_model, load  # noqa: E402
 from owl2uml.fetch import FetchError, fetch          # noqa: E402
-from owl2uml import coverage, reason               # noqa: E402
+from owl2uml import coverage, modules, reason      # noqa: E402
 from owl2uml.postprocess import postprocess       # noqa: E402
 from owl2uml.dot import dot_available, render_dot_svg  # noqa: E402
 from owl2uml.aspect import parse_target               # noqa: E402
@@ -134,8 +134,20 @@ def render():
     except Exception as exc:  # noqa: BLE001
         return jsonify(error=f"parse failed: {exc}"), 400
 
-    cov = None
+    module_list, chosen = [], request.form.get("module") or ""
     if not properties:
+        try:
+            found = modules.assign(model, graph)
+            module_list = [{"id": k, "count": len(v["members"]), "source": v["source"],
+                            "upper": v["upper"]} for k, v in found.items()]
+            if chosen and chosen != "overview":
+                model = modules.view(model, chosen)
+            elif chosen == "overview":
+                model = modules.overview(model)
+        except ValueError as exc:
+            return jsonify(error=str(exc)), 400
+    cov = None
+    if not properties and not chosen:
         try:
             cov = coverage.summary(coverage.build(graph, model, definitions=_flag("definitions")))
         except Exception:  # noqa: BLE001 - the diagram matters more
@@ -145,7 +157,8 @@ def render():
             # The OWL behind each class and line, for the source panel
             # ("source=0" leaves it out).
             src = None
-            if request.form.get("source") not in ("0", "false", "off") and not properties:
+            if request.form.get("source") not in ("0", "false", "off") and not properties \
+                    and chosen != "overview":
                 try:
                     src = build_source(graph, model)
                 except Exception:  # noqa: BLE001 - the diagram matters more
@@ -171,6 +184,8 @@ def render():
         loader=loaded.report(),
         coverage=cov,
         layout=model.layout_report,
+        modules=module_list,
+        module=chosen,
         groups=[
             {"name": g.name, "color": g.color, "count": g.count, "upper": g.upper,
              "iri": g.iri, "version_iri": g.version_iri}

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 
-from .model import Group, HIERARCHY_KINDS, UModel
+from .model import ANON_KINDS, Group, HIERARCHY_KINDS, UModel
 
 # Tableau-10-derived palette: distinct on the pale header tint and in grey-scale
 # print. The yellow is darkened so a white class icon stays legible on it.
@@ -82,7 +82,7 @@ def assign_groups(m: UModel) -> None:
     namespace (for an ontology whose IRI is known and which has classes of its
     own). With a single group the classic green is kept and no legend is needed.
     """
-    have_home = any(is_home(m, cid) for cid in m.classes)
+    have_home = any(is_home(m, cid) for cid, c in m.classes.items() if c.kind == "class")
     groups: dict[str, Group] = {}
     home_seen: dict[str, bool] = {}
     # Classes that come from a resolved owl:imports ontology are grouped by
@@ -90,6 +90,9 @@ def assign_groups(m: UModel) -> None:
     by_iri = {(i.get("ontology_iri") or i["iri"]): i for i in m.imports}
     import_names = {src: _import_name(src) for src in set(m.import_of.values())}
     for cid, c in m.classes.items():
+        if c.kind in ANON_KINDS:
+            c.group = ""          # drawn neutral, not counted in the key
+            continue
         src = m.import_of.get(cid)
         if src and not is_home(m, cid):
             c.group = import_names[src]
@@ -129,7 +132,15 @@ def prune_unused(m: UModel) -> int:
     """
     if not m.groups or not any(g.upper for g in m.groups.values()):
         return 0
-    upper = {cid for cid, c in m.classes.items() if m.groups[c.group].upper}
+    upper = {cid for cid, c in m.classes.items()
+             if c.group in m.groups and m.groups[c.group].upper}
+    # An anonymous node belongs with its owner; a ⊥ group node is upper-level
+    # when all its members are (BFO's own disjointness axioms).
+    for cid, c in m.classes.items():
+        if c.kind in ANON_KINDS:
+            ends = [e.dst for e in m.edges if e.src == cid]
+            if (c.owner in upper) if c.kind != "disjoint" else (ends and all(x in upper for x in ends)):
+                upper.add(cid)
     home = set(m.classes) - upper
     if not home:
         return 0
@@ -153,6 +164,11 @@ def prune_unused(m: UModel) -> int:
         keep.add(cid)
         stack.extend(parents.get(cid, ()))
 
+    # a ⊥ group node left with fewer than two members says nothing
+    for cid, c in m.classes.items():
+        if c.kind == "disjoint" and sum(1 for e in m.edges
+                                        if e.src == cid and e.dst in keep) < 2:
+            keep.discard(cid)
     removed = [cid for cid in m.classes if cid not in keep]
     for cid in removed:
         del m.classes[cid]
@@ -163,7 +179,8 @@ def prune_unused(m: UModel) -> int:
     ]
     counts: dict[str, int] = {}
     for c in m.classes.values():
-        counts[c.group] = counts.get(c.group, 0) + 1
+        if c.group:
+            counts[c.group] = counts.get(c.group, 0) + 1
     for name in list(m.groups):
         if name in counts:
             m.groups[name].count = counts[name]
@@ -182,25 +199,32 @@ def merge_edges(m: UModel) -> None:
     * Duplicate subclass links are dropped; a definition supersedes an
       asserted subclass link between the same pair.
     """
-    restricted = {(e.src, e.dst, e.label.rsplit(" ", 1)[0])
-                  for e in m.edges if e.kind == "restriction"}
-    restricted |= {(e.src, e.dst, e.label.rsplit(" ", 2)[0])
-                   for e in m.edges if e.kind == "restriction"}
+    # restrictions name their property IRIs (Edge.props); match on those
+    restricted = {(e.src, e.dst, p) for e in m.edges if e.kind == "restriction" for p in e.props}
     defined = {(e.src, e.dst) for e in m.edges if e.kind == "definition"}
 
     merged: dict[tuple[str, str, str], object] = {}
     out = []
     for e in m.edges:
-        if e.kind == "association" and (e.src, e.dst, e.label) in restricted:
+        if e.kind == "association" and e.props and \
+                all((e.src, e.dst, p) in restricted for p in e.props):
             continue
         if e.kind == "generalization" and (e.src, e.dst) in defined:
             continue
-        key = (e.src, e.dst, e.kind)
+        key = (e.src, e.dst, e.kind, e.genset)
         prev = merged.get(key)
         if prev is None:
             merged[key] = e
             out.append(e)
-        elif e.label and e.label not in prev.label.split("\n"):
+            continue
+        prev.props = sorted(set(prev.props) | set(e.props))
+        if prev.multiplicity or e.multiplicity:
+            # one line, several restrictions: multiplicities go into the labels
+            for x in (prev, e):
+                if x.multiplicity:
+                    x.label = f"{x.label} [{x.multiplicity}]"
+                    x.multiplicity = ""
+        if e.label and e.label not in prev.label.split("\n"):
             prev.label = "\n".join(sorted(prev.label.split("\n") + [e.label], key=str.lower)) \
                 if prev.label else e.label
     m.edges = out

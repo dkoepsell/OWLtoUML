@@ -20,7 +20,7 @@ from rdflib.collection import Collection
 from rdflib.namespace import SKOS, XSD
 
 from .edit import edge_parts
-from .model import UModel
+from .model import ANON_KINDS, UModel
 from .parse import _build_labels, _display, _local
 
 SCRIPT_ID = "o2u-source"
@@ -343,10 +343,29 @@ def build_source(g: Graph, m: UModel) -> dict:
 
     classes: dict[str, dict] = {}
     nodes: dict[str, str] = {}
+    # Anonymous ⊔ / ¬ / ⊥ / {oneOf} nodes show the axiom they were drawn from:
+    # their owner's, or for a ⊥ group, a member's.
+    anon = {cid: c for cid, c in m.classes.items() if c.kind in ANON_KINDS}
+    reach: dict[str, set] = {}
+    for e in m.edges:
+        if e.src in anon:
+            reach.setdefault(e.src, set()).add(e.dst)
     for i, cid in enumerate(m.classes):
         nodes[f"n{i}"] = cid
+        if cid in anon:
+            continue
         term = URIRef(cid)
         classes[cid] = _entity(g, term, labels, w, _class_axioms(g, term, w), "Class")
+    for cid, c in anon.items():
+        owner = c.owner if c.owner in classes else next(
+            (x for x in sorted(reach.get(cid, ())) if x in classes), "")
+        ent = dict(classes[owner]) if owner else {
+            "iri": "", "curie": "", "label": "", "name": "", "frame": "Class",
+            "ann": [], "ax": [], "ttl": ""}
+        what = {"union": "union (or)", "complement": "complement (not)",
+                "disjoint": "disjoint classes", "enumeration": "enumeration (one of)"}[c.kind]
+        ent["label"] = f"{what}, from an axiom on {ent['label']}" if owner else what
+        classes[cid] = ent
 
     props: dict[str, dict] = {}
 
@@ -378,8 +397,15 @@ def build_source(g: Graph, m: UModel) -> dict:
         elif e.kind == "inferred":
             info["premises"] = _premises(g, src, dst, classes, prop)
         else:
-            refs = [[e.src, j] for j, a in enumerate(classes[e.src]["ax"]) if e.dst in a["refs"]]
-            if e.kind == "equivalent":
+            want = {e.dst} | reach.get(e.dst, set())
+            refs = [[e.src, j] for j, a in enumerate(classes[e.src]["ax"]) if want & set(a["refs"])]
+            if not refs and e.src in anon:
+                # a ⊥ group's line to the member it borrowed its axioms from:
+                # cite another member's axiom that names this one
+                refs = [[x, j] for x in sorted(reach.get(e.src, ())) if x != e.dst and x in classes
+                        for j, a in enumerate(classes[x]["ax"]) if e.dst in a["refs"]][:1]
+            if e.kind == "equivalent" or (e.genset and e.dst in classes):
+                # equivalence, or a DisjointUnionOf stated on the parent
                 refs += [[e.dst, j] for j, a in enumerate(classes[e.dst]["ax"])
                          if e.src in a["refs"]]
             info["axioms"] = refs

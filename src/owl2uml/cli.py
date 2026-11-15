@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from .parse import load_graph, parse_ontology
+from .parse import load_graph, parse_ontology, property_view
 from .load import IMPORT_MODES, LOADERS, annotate_model, load
 from . import reason
 from .postprocess import postprocess
@@ -66,6 +66,15 @@ def main(argv: list[str] | None = None) -> int:
                     help="inline the viewer script, so the SVG opened in a browser "
                          "supports hover, pin, drag, zoom, the source panel (s) and "
                          "the inferred toggle (i)")
+    ap.add_argument("--show-definitions", action="store_true",
+                    help="print each class's definition (IAO_0000115, skos:definition "
+                         "or rdfs:comment) under its name")
+    ap.add_argument("--draw-chains", action="store_true",
+                    help="add property chains (p ⊒ q ∘ r) to the labels of lines "
+                         "drawn for p")
+    ap.add_argument("--property-view", action="store_true",
+                    help="draw the property hierarchy (sub-properties, inverses, "
+                         "domains, ranges, characteristics) instead of the classes")
     flow = ap.add_argument_group("flow view (process ontologies)")
     flow.add_argument("--flow", action="store_true",
                       help="draw the processes as a flow in swimlanes instead of a class "
@@ -90,14 +99,17 @@ def main(argv: list[str] | None = None) -> int:
     try:
         loaded = _load(args)
         graph = loaded.merge()
-        model = parse_ontology(args.input or args.iri, graph=graph)
-        annotate_model(model, loaded)
+        if args.property_view:
+            model = property_view(graph)
+        else:
+            model = parse_ontology(args.input or args.iri, graph=graph)
+            annotate_model(model, loaded)
     except Exception as exc:  # noqa: BLE001 - surface parse errors clearly
         print(f"error: failed to load '{args.input or args.iri}': {exc}", file=sys.stderr)
         return 1
     _report_load(loaded)
 
-    inf = reason.classify(graph, args.reason)
+    inf = reason.classify(graph, args.reason if not args.property_view else "none")
     reason.apply(model, inf)
     report = postprocess(model, prune=not args.keep_unused)
 
@@ -112,9 +124,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if use_dot:
-        src = None if args.no_source else build_source(graph, model)
+        src = None if (args.no_source or args.property_view) else build_source(graph, model)
         svg = render_dot_svg(model, legend=not args.no_legend,
-                             compact_labels=args.compact_labels, source=src)
+                             compact_labels=args.compact_labels, source=src,
+                             definitions=args.show_definitions, chains=args.draw_chains)
         if args.interactive:
             svg = inline_viewer(svg)
         engine = "graphviz dot"

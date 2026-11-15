@@ -87,10 +87,16 @@ def _icon(color: str = _ICON_BG) -> str:
     )
 
 
-def _label(c: UClass, color: str = "") -> str:
+_DEPRECATED = "#9a968c"
+_DEF_WRAP = 34
+
+
+def _label(c: UClass, color: str = "", definitions: bool = False) -> str:
     """HTML-like table label for one UML class box (PlantUML-style)."""
     color = color or _ICON_BG
     header_bg = _HEADER_BG if color.lower() == _ICON_BG.lower() else tint(color)
+    if c.deprecated:
+        color, header_bg = _DEPRECATED, "#e8e6e0"
     title = ""
     stereo = c.stereotype or ("unsatisfiable" if c.unsatisfiable else
                               "defined" if c.defined else "")
@@ -98,7 +104,12 @@ def _label(c: UClass, color: str = "") -> str:
         color, header_bg = "#c0392b", "#f6d5d1"
     if stereo:
         title += f'<font point-size="9">&#171;{_h(stereo)}&#187;</font><br/>'
-    title += "<br/>".join(f"<b>{_h(line)}</b>" for line in _wrap(c.name))
+    if c.deprecated:
+        title += '<font point-size="9">&#171;deprecated&#187;</font><br/>'
+        title += "<br/>".join(f'<s><font color="#6b675e">{_h(line)}</font></s>'
+                              for line in _wrap(c.name))
+    else:
+        title += "<br/>".join(f"<b>{_h(line)}</b>" for line in _wrap(c.name))
     # Header: green class icon to the left of the (optionally stereotyped) name.
     header = (
         '<table border="0" cellborder="0" cellspacing="0" cellpadding="0"><tr>'
@@ -112,12 +123,49 @@ def _label(c: UClass, color: str = "") -> str:
         f'cellpadding="6" bgcolor="{_BODY_BG}">',
         f'<tr><td bgcolor="{header_bg}" align="center">{header}</td></tr>',
     ]
+    if definitions and c.definition:
+        lines = _wrap(c.definition, _DEF_WRAP)
+        if len(lines) > 3:
+            lines = lines[:3]
+            lines[-1] = lines[-1].rstrip(".,;") + " …"
+        text = "<br/>".join(_h(ln) for ln in lines)
+        rows.append(f'<tr><td align="left" balign="left"><font point-size="9" '
+                    f'color="#55524b"><i>{text}</i></font></td></tr>')
     if c.attrs:
         rows.append("<hr/>")
         body = "<br/>".join(_h(a.label()) for a in c.attrs)
         rows.append(f'<tr><td align="left" balign="left">{body}</td></tr>')
     rows.append("</table>")
     return "".join(rows)
+
+
+_ANON_STYLE = {
+    # kind: (glyph colour, tooltip)
+    "union": ("#33312e", "union (or) of the classes it links to"),
+    "complement": ("#33312e", "complement (not) of the class it links to"),
+    "disjoint": ("#c0392b", "these classes are pairwise disjoint"),
+}
+
+
+def _node(nid: str, cid: str, c: UClass, color: str, gcls: str, defcls: str,
+          definitions: bool) -> str:
+    """One DOT node statement for a class, an anonymous expression or an individual."""
+    if c.kind in _ANON_STYLE:
+        ink, tip = _ANON_STYLE[c.kind]
+        return (f'  {nid} [shape=circle, fixedsize=true, width=0.32, label="{_attr(c.name)}", '
+                f'fontsize=15, fontcolor="{ink}", color="{ink}", style=filled, '
+                f'fillcolor="#ffffff", tooltip="{tip}", id="{nid}", '
+                f'class="uml-class anon anon-{c.kind}"];')
+    if c.kind == "individual":
+        # UML object: "name : Type", underlined, in a plain box
+        label = ('<table border="1" color="#55524b" cellborder="0" cellpadding="5" '
+                 f'bgcolor="#ffffff"><tr><td><u>{_h(c.name)}</u></td></tr></table>')
+        return (f'  {nid} [label=<{label}>, tooltip="{_attr(cid)}", id="{nid}", '
+                f'class="uml-class individual"];')
+    extra = " anon" if c.kind == "enumeration" else ""
+    extra += " deprecated" if c.deprecated else ""
+    return (f'  {nid} [label=<{_label(c, color, definitions)}>, tooltip="{_attr(cid)}", '
+            f'id="{nid}", class="uml-class{gcls}{defcls}{extra}"];')
 
 
 # Above this many classes, use straight-line edges: spline/polyline routing
@@ -156,7 +204,9 @@ def _slug(name: str) -> str:
 def _legend(m: UModel) -> str:
     """A key: one swatch per group, plus the line styles used."""
     rows = ['<tr><td colspan="2" align="left"><b>Key</b></td></tr>']
-    for g in sorted(m.groups.values(), key=lambda g: (g.upper, g.name)):
+    # one group says nothing: its swatch is left out
+    shown = m.groups.values() if len(m.groups) > 1 else []
+    for g in sorted(shown, key=lambda g: (g.upper, g.name)):
         note = " (imported)" if g.upper else ""
         ident = ""
         if g.iri:
@@ -174,6 +224,20 @@ def _legend(m: UModel) -> str:
                   'inferred by the reasoner</font>')
     if unsat:
         extra += '<br/><font color="#c0392b">red class: unsatisfiable</font>'
+    kinds = {e.kind for e in m.edges}
+    if "disjoint" in kinds:
+        extra += '<br/><font color="#c0392b">red dotted line / ⊥: disjoint classes</font>'
+    if any(c.kind in ("union", "complement") for c in m.classes.values()):
+        extra += '<br/>⊔ / ¬ node: union (or) / complement (not) of the classes it links to'
+    if any(e.genset for e in m.edges):
+        extra += '<br/>shared hollow arrow {disjoint, complete}: disjoint union'
+    if any(e.multiplicity for e in m.edges):
+        extra += '<br/>number at an arrowhead: how many (1..* at least one, 0..1 at most one)'
+    if any(c.deprecated for c in m.classes.values()):
+        extra += '<br/><font color="#6b675e">grey, struck-through: deprecated</font>'
+    if any(c.kind == "individual" for c in m.classes.values()):
+        extra += '<br/>underlined box: an individual (value)'
+    rows += _property_rows(m)
     rows.append('<tr><td align="left" colspan="2">'
                 '<font point-size="10">solid hollow arrow: subclass of<br/>'
                 'dashed hollow arrow: defined as a kind of (≡)<br/>'
@@ -186,7 +250,36 @@ def _legend(m: UModel) -> str:
             f'tooltip="key"];')
 
 
-def to_dot(m: UModel, legend: bool = True, xlabels: bool = False) -> str:
+_MAX_PROPERTY_ROWS = 12
+
+
+def _property_rows(m: UModel) -> list[str]:
+    """Key rows for the properties on the lines: badges explained, sub-property,
+    inverse and chain axioms (which are not drawn as lines themselves)."""
+    if not m.properties:
+        return []
+    rows = ['<tr><td colspan="2" align="left"><b>Properties</b> '
+            '<font point-size="9">⁻¹ has inverse · ↔ symmetric · ⁺ transitive · ¹ functional'
+            '</font></td></tr>']
+    items = sorted(m.properties.values(), key=lambda p: p["name"].lower())
+    for info in items[:_MAX_PROPERTY_ROWS]:
+        bits = list(info["characteristics"])
+        bits += [f"sub-property of {x}" for x in info["super"]]
+        bits += [f"inverse of {x}" for x in info["inverse"]]
+        bits += [f"chain: {x}" for x in info["chains"]]
+        text = _h(info["name"]) + ': <font point-size="9">' + _h("; ".join(bits)) + "</font>"
+        rows.append(f'<tr><td></td><td align="left" balign="left">{text}</td></tr>')
+    if len(items) > _MAX_PROPERTY_ROWS:
+        rows.append(f'<tr><td></td><td align="left"><font point-size="9">… and '
+                    f'{len(items) - _MAX_PROPERTY_ROWS} more (see the source panel)</font></td></tr>')
+    return rows
+
+
+def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
+           definitions: bool = False, chains: bool = False) -> str:
+    """``definitions``: definition text under each class name
+    (--show-definitions). ``chains``: property chains added to line labels
+    (--draw-chains)."""
     # Curved splines look best for small diagrams; straight lines scale.
     splines = "true" if len(m.classes) <= _SPLINE_LIMIT else "line"
     # sfdp ignores rankdir/ranksep; overlap removal keeps boxes from stacking.
@@ -213,18 +306,37 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False) -> str:
                  (" unsatisfiable" if c.unsatisfiable else "")
         # id/class are copied onto the SVG <g>, giving the browser-side
         # interaction script (webapp/static/interact.js) stable hooks.
-        lines.append(f'  {nid} [label=<{_label(c, color)}>, tooltip="{_attr(cid)}", '
-                     f'id="{nid}", class="uml-class{gcls}{defcls}"];')
+        lines.append(_node(nid, cid, c, color, gcls, defcls, definitions))
 
     for i, e in enumerate(m.edges):
         if e.src not in ids or e.dst not in ids:
             continue
         s, d = ids[e.src], ids[e.dst]
+        mult = (f', headlabel="{_attr(e.multiplicity)}", labelfontsize=9, '
+                f'labelfontcolor="#3a5a8c", labeldistance=1.4') if e.multiplicity else ""
         if e.kind == "generalization":
+            # A generalization set (DisjointUnion) shares one arrowhead.
+            gs = (f', samehead="{e.genset}", label="{_attr(e.label)}", fontsize=9'
+                  if e.genset else "")
             lines.append(
-                f'  {s} -> {d} [arrowhead=empty, color="#33312e", penwidth=1.2, '
+                f'  {s} -> {d} [arrowhead=empty, color="#33312e", penwidth=1.2{gs}, '
                 f'id="e{i}", class="rel-generalization", tooltip="subclass of"];'
             )
+        elif e.kind == "disjoint":
+            lbl = f', label="{_attr(e.label)}", fontcolor="#c0392b"' if e.label else ""
+            lines.append(
+                f'  {s} -> {d} [dir=none, style=dotted, color="#c0392b", penwidth=1.4, '
+                f'constraint=false{lbl}, id="e{i}", class="rel-disjoint", '
+                f'tooltip="disjoint with"];')
+        elif e.kind == "member":
+            lines.append(
+                f'  {s} -> {d} [dir=none, style=dashed, color="#55524b", '
+                f'id="e{i}", class="rel-member", tooltip="member of the expression"];')
+        elif e.kind == "self":
+            lines.append(
+                f'  {s} -> {d} [arrowhead=vee, color="#3a5a8c", fontcolor="#3a5a8c", '
+                f'label="{_attr(e.label)}", id="e{i}", class="rel-self", '
+                f'tooltip="{_attr(e.label)}"];')
         elif e.kind == "definition":
             # Dashed hollow triangle: the class is *defined* as a kind of the
             # target (a named member of its owl:equivalentClass intersection).
@@ -244,23 +356,28 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False) -> str:
         elif e.kind == "equivalent":
             lines.append(
                 f'  {s} -> {d} [dir=both, arrowhead=none, arrowtail=none, '
-                f'style=dashed, color="#33312e", label="≡", constraint=false, '
-                f'id="e{i}", class="rel-equivalent", tooltip="equivalent class"];'
+                f'style=dashed, color="#33312e", label="{_attr(e.label or "≡")}", '
+                f'constraint=false, id="e{i}", class="rel-equivalent", '
+                f'tooltip="{_attr("equivalent" if e.label in ("", "≡") else e.label)}"];'
             )
         else:
             restriction = e.kind == "restriction"
+            text = e.label
+            if chains:
+                extra = [f"⊒ {c}" for p in e.props for c in m.properties.get(p, {}).get("chains", [])]
+                text = "\n".join([text] + extra) if extra else text
             # Merged relations: one per line (DOT "\n" escape, not a raw newline).
             key = "xlabel" if xlabels else "label"
-            lbl = f', {key}="{_attr(e.label).replace(chr(10), chr(92) + "n")}"' if e.label else ""
+            lbl = f', {key}="{_attr(text).replace(chr(10), chr(92) + "n")}"' if text else ""
             tip = _attr((e.label or e.kind).replace(chr(10), "; "))
             style = ", style=dashed" if restriction else ""
             lines.append(
                 f'  {s} -> {d} [arrowhead=vee, color="#3a5a8c", '
-                f"fontcolor=\"#3a5a8c\", constraint=false{style}{lbl}, "
+                f"fontcolor=\"#3a5a8c\", constraint=false{style}{lbl}{mult}, "
                 f'id="e{i}", class="rel-{_attr(e.kind)}", tooltip="{tip}"];'
             )
-    special = any(e.kind == "inferred" for e in m.edges) or \
-        any(c.unsatisfiable for c in m.classes.values())
+    special = any(e.kind in ("inferred", "disjoint", "member") or e.genset for e in m.edges) or \
+        any(c.unsatisfiable or c.deprecated for c in m.classes.values()) or bool(m.properties)
     if legend and (len(groups) > 1 or special):
         lines.append(_legend(m))
     lines.append("}")
@@ -283,7 +400,8 @@ _XLABEL_MIN = 40
 
 
 def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
-                   source: dict | None = None) -> str:
+                   source: dict | None = None, definitions: bool = False,
+                   chains: bool = False) -> str:
     """Render with Graphviz.
 
     ``compact_labels``: "auto" (diagrams of 40+ classes), "on", "off". When on,
@@ -296,7 +414,8 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
         raise RuntimeError("graphviz 'dot' not found (run scripts/setup.sh)")
     compact = compact_labels == "on" or (
         compact_labels == "auto" and len(m.classes) >= _XLABEL_MIN)
-    src = to_dot(m, legend=legend, xlabels=compact).encode("utf-8")
+    src = to_dot(m, legend=legend, xlabels=compact, definitions=definitions,
+                 chains=chains).encode("utf-8")
     engine = _engine_for(m)
 
     try:

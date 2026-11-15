@@ -15,7 +15,7 @@ from flask import Flask, Response, request, jsonify, send_from_directory
 # Make the sibling `owl2uml` package importable.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from owl2uml.parse import parse_ontology            # noqa: E402
+from owl2uml.parse import parse_ontology, property_view  # noqa: E402
 from owl2uml.load import IMPORT_MODES, LoadError, annotate_model, load  # noqa: E402
 from owl2uml.fetch import FetchError, fetch          # noqa: E402
 from owl2uml import reason                         # noqa: E402
@@ -114,12 +114,16 @@ def render():
             # edits change the uploaded ontology only, never its imports
             edit_report = editing.apply_edits(loaded.graph, ops)
         graph = loaded.merge()
-        model = parse_ontology("upload" + suffix, graph=graph)
-        annotate_model(model, loaded)
+        properties = request.form.get("view") == "properties"
+        if properties:
+            model = property_view(graph)
+        else:
+            model = parse_ontology("upload" + suffix, graph=graph)
+            annotate_model(model, loaded)
         engine_req = request.form.get("reason") or "none"
         if engine_req not in reason.ENGINES:
             engine_req = "none"
-        inf = reason.classify(graph, engine_req)
+        inf = reason.classify(graph, "none" if properties else engine_req)
         reason.apply(model, inf)
         # "keep_unused=1" keeps imported upper-level classes the ontology
         # never reaches (left out by default).
@@ -134,12 +138,13 @@ def render():
             # The OWL behind each class and line, for the source panel
             # ("source=0" leaves it out).
             src = None
-            if request.form.get("source") not in ("0", "false", "off"):
+            if request.form.get("source") not in ("0", "false", "off") and not properties:
                 try:
                     src = build_source(graph, model)
                 except Exception:  # noqa: BLE001 - the diagram matters more
                     src = None
-            svg = render_dot_svg(model, source=src)
+            svg = render_dot_svg(model, source=src, definitions=_flag("definitions"),
+                                 chains=_flag("chains"))
             engine = "graphviz"
         else:
             w, h = layout(model)
@@ -163,6 +168,10 @@ def render():
             for g in sorted(model.groups.values(), key=lambda g: (g.upper, g.name))
         ],
     )
+
+
+def _flag(name: str) -> bool:
+    return request.form.get(name) in ("1", "true", "on")
 
 
 def _load_edits() -> list:

@@ -107,10 +107,19 @@
           </label>
         </div>
         <div class="fmtrow">
+          <label title="Print each class's definition (IAO_0000115, skos:definition or rdfs:comment) under its name">
+            <input type="checkbox" id="definitions" /> show definitions
+          </label>
+          <label title="Add property chains (p ⊒ q ∘ r) to the labels of lines drawn for p">
+            <input type="checkbox" id="chains" /> show property chains
+          </label>
+        </div>
+        <div class="fmtrow">
           <label for="view">View</label>
           <select id="view" title="Flow: processes in swimlanes, from sequence relations such as 'immediately preceded by'">
             <option value="classes">Classes</option>
             <option value="flow">Flow (processes)</option>
+            <option value="properties">Properties (hierarchy)</option>
           </select>
         </div>
         <div class="fmtrow flowfiles" id="flowfiles" hidden>

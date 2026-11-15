@@ -25,8 +25,21 @@ class Attr:
 #   "equivalent"      owl:equivalentClass between two named classes
 #   "inferred"        a subclass relation found by a reasoner and not already
 #                     implied by the asserted hierarchy (see reason.py)
+#   "disjoint"        owl:disjointWith / AllDisjointClasses (between two
+#                     classes, or from a ⊥ group node to each member)
+#   "member"          from an anonymous ⊔ / ¬ node to the class it is built on
+#   "self"            a hasSelf restriction (a loop on the class)
 EDGE_KINDS = ("generalization", "definition", "association", "restriction",
-              "equivalent", "inferred")
+              "equivalent", "inferred", "disjoint", "member", "self")
+
+# Node kinds. "class" is a named OWL class; the others are drawn differently:
+#   "union" ⊔ and "complement" ¬   anonymous class expressions (owner = the
+#                                  class whose axiom they come from)
+#   "disjoint"                     ⊥ node grouping 3+ mutually disjoint classes
+#   "individual"                   a named individual (hasValue), UML object
+#   "enumeration"                  an anonymous oneOf {a, b, c}
+NODE_KINDS = ("class", "union", "complement", "disjoint", "individual", "enumeration")
+ANON_KINDS = ("union", "complement", "disjoint", "enumeration")
 
 # Kinds that place a class below another in the class hierarchy.
 HIERARCHY_KINDS = ("generalization", "definition", "inferred")
@@ -39,6 +52,9 @@ class Edge:
     dst: str           # class id (URI string)
     kind: str          # one of EDGE_KINDS
     label: str = ""    # property name (associations, restrictions)
+    multiplicity: str = ""   # UML multiplicity at the target end: "1..*", "0..1", "3"
+    genset: str = ""         # generalization set id (DisjointUnion): one shared arrowhead
+    props: list[str] = field(default_factory=list)   # property IRIs behind the label
 
 
 @dataclass
@@ -52,6 +68,10 @@ class UClass:
     defined: bool = False  # has an owl:equivalentClass definition
     unsatisfiable: bool = False   # reasoner: equivalent to owl:Nothing
     inferred_placed: bool = False # reasoner: gained a superclass nobody asserted
+    kind: str = "class"    # one of NODE_KINDS
+    owner: str = ""        # anonymous nodes: the class whose axiom made them
+    deprecated: bool = False      # owl:deprecated true
+    definition: str = ""          # IAO_0000115 / skos:definition / rdfs:comment
 
     # filled in by the layout pass
     x: float = 0.0
@@ -82,6 +102,10 @@ class UModel:
     # imported ontology each entity not declared in the main one came from
     imports: list[dict] = field(default_factory=list)
     import_of: dict[str, str] = field(default_factory=dict)
+    # property IRI -> what the key says about it (constructs.property_key)
+    properties: dict[str, dict] = field(default_factory=dict)
+    # what the diagram cannot show (punning, anonymous individuals)
+    notes: list[dict] = field(default_factory=list)
 
     def cls(self, cid: str, name: str | None = None) -> UClass:
         """Get or create a class node by id."""

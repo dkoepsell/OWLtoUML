@@ -53,6 +53,9 @@ async function renderFile(file) {
   fd.append("imports", $("imports").value);
   if ($("keepUnused").checked) fd.append("keep_unused", "1");
   if ($("reason").checked) fd.append("reason", "auto");
+  if ($("definitions").checked) fd.append("definitions", "1");
+  if ($("chains").checked) fd.append("chains", "1");
+  if ($("view").value === "properties") fd.append("view", "properties");
   if (flow) {
     fd.append("view", "flow");
     for (const f of $("events").files) fd.append("events", f);

@@ -1,0 +1,67 @@
+@prefix : <http://example.org/c#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+
+# One of each OWL 2 construct in spec WS1.2.
+<http://example.org/c> a owl:Ontology .
+
+:Agent a owl:Class .
+:Person a owl:Class ; rdfs:subClassOf :Agent ;
+    obo:IAO_0000115 "A human being regarded as an individual." ;
+    # cardinality -> multiplicity; hasSelf -> loop; facet -> attribute text
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty :hasParent ;
+                      owl:qualifiedCardinality "2"^^xsd:nonNegativeInteger ; owl:onClass :Person ] ,
+                    [ a owl:Restriction ; owl:onProperty :knows ; owl:hasSelf true ] ,
+                    [ a owl:Restriction ; owl:onProperty :age ;
+                      owl:someValuesFrom [ a rdfs:Datatype ; owl:onDatatype xsd:integer ;
+                                           owl:withRestrictions ( [ xsd:minInclusive 0 ] ) ] ] .
+:Organization a owl:Class ; rdfs:subClassOf :Agent ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty :hasMember ;
+                      owl:minCardinality "1"^^xsd:nonNegativeInteger ] .
+:Robot a owl:Class ; rdfs:subClassOf :Agent .
+
+# disjointness: a pair, and a group of three
+:Person owl:disjointWith :Organization .
+[] a owl:AllDisjointClasses ; owl:members ( :Person :Organization :Robot ) .
+
+# DisjointUnion -> generalization set {disjoint, complete}
+:Vehicle a owl:Class ; owl:disjointUnionOf ( :Car :Bike ) .
+:Car a owl:Class .
+:Bike a owl:Class .
+
+# union as a superclass; complement as a superclass and as a filler
+:Owner a owl:Class ; rdfs:subClassOf [ a owl:Class ; owl:unionOf ( :Person :Organization ) ] .
+:NonPerson a owl:Class ; rdfs:subClassOf [ a owl:Class ; owl:complementOf :Person ] .
+:Hermit a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty :knows ;
+                      owl:allValuesFrom [ a owl:Class ; owl:complementOf :Person ] ] .
+
+# hasValue (individual) and oneOf (enumeration)
+:Color a owl:Class ; owl:equivalentClass [ a owl:Class ; owl:oneOf ( :red :green ) ] .
+:red a owl:NamedIndividual , :Color .
+:green a owl:NamedIndividual , :Color .
+:RedCar a owl:Class ; rdfs:subClassOf :Car ,
+    [ a owl:Restriction ; owl:onProperty :hasColor ; owl:hasValue :red ] .
+
+# property characteristics, inverse, sub-property, chain
+:hasParent a owl:ObjectProperty ; owl:inverseOf :hasChild .
+:hasChild a owl:ObjectProperty .
+:hasAncestor a owl:ObjectProperty , owl:TransitiveProperty .
+:hasParent rdfs:subPropertyOf :hasAncestor .
+:hasGrandparent a owl:ObjectProperty ; owl:propertyChainAxiom ( :hasParent :hasParent ) ;
+    rdfs:domain :Person ; rdfs:range :Person .
+:knows a owl:ObjectProperty , owl:SymmetricProperty .
+:hasMember a owl:ObjectProperty .
+:hasColor a owl:ObjectProperty , owl:FunctionalProperty .
+:age a owl:DatatypeProperty .
+
+# deprecated class
+:Automaton a owl:Class ; owl:deprecated true ; rdfs:subClassOf :Agent ;
+    skos:definition "Old name for robot." .
+
+# punning: :Car is also an individual
+:Car a owl:NamedIndividual .

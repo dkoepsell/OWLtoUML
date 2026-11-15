@@ -167,9 +167,10 @@ def render():
                     src = build_source(graph, model)
                 except Exception:  # noqa: BLE001 - the diagram matters more
                     src = None
+            for_print = request.form.get("fmt") in ("svg-static", "pdf", "png", "tikz")
             svg = render_dot_svg(model, source=src, definitions=_flag("definitions"),
                                  chains=_flag("chains"), coverage=cov, aspect=_aspect(),
-                                 pins=pins)
+                                 pins=pins, for_print=for_print)
             engine = "graphviz"
         else:
             w, h = layout(model)

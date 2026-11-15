@@ -270,7 +270,15 @@ def _exports(args, graph, model, svg: str, out: str) -> bool:
     from .printcheck import check
     stem = out.rsplit(".", 1)[0]
     fmts = [f.strip() for f in args.export.split(",") if f.strip()]
-    if set(fmts) & {"svg-static", "pdf", "png", "tikz"} and model.drawing:
+    printed = {"svg-static", "pdf", "png", "tikz"}
+    screen_svg, screen_drawing = svg, dict(model.drawing)
+    if set(fmts) & printed and model.drawing:
+        # Static figures are drawn for print: compact key on its own row,
+        # classes where the screen version has them.
+        nodes = {f"n{i}": cid for i, cid in enumerate(model.classes)}
+        here = pinning.to_layout_space(pinning.from_svg(svg, nodes), model.layout_origin)
+        svg = _render(args, graph, model, None,
+                      {k: (v["x"], v["y"]) for k, v in here.items()}, for_print=True)
         named = sum(1 for c in model.classes.values() if c.kind == "class")
         found = check(svg, layout_json(model), named, args.page_width)
         for w in found["warnings"]:
@@ -281,7 +289,10 @@ def _exports(args, graph, model, svg: str, out: str) -> bool:
         elif args.strict:
             print("error: print checks failed (--strict)", file=sys.stderr)
             return False
+    print_svg, print_drawing = svg, dict(model.drawing)
     for fmt in fmts:
+        svg, model.drawing = (print_svg, print_drawing) if fmt in printed \
+            else (screen_svg, screen_drawing)
         if fmt not in FORMATS:
             print(f"error: unknown export format '{fmt}' ({', '.join(FORMATS)})", file=sys.stderr)
             return False
@@ -334,7 +345,7 @@ def _store_layout(args, model, svg: str, saved: dict) -> None:
               file=sys.stderr)
 
 
-def _render(args, graph, model, cov, pins=None) -> str:
+def _render(args, graph, model, cov, pins=None, for_print=False) -> str:
     """SVG for ``model``: Graphviz when available, else the builtin layout."""
     if not (args.engine == "dot" or (args.engine == "auto" and dot_available())):
         print("engine: builtin", file=sys.stderr)
@@ -346,7 +357,7 @@ def _render(args, graph, model, cov, pins=None) -> str:
                          definitions=args.show_definitions, chains=args.draw_chains,
                          coverage=coverage.summary(cov) if cov else None,
                          aspect=parse_target(args.aspect),
-                         max_rank_width=args.max_rank_width, pins=pins)
+                         max_rank_width=args.max_rank_width, pins=pins, for_print=for_print)
     lr = model.layout_report
     if lr:
         how = ", ".join(lr["steps"]) or "no change needed"

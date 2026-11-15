@@ -106,9 +106,9 @@ def _label(c: UClass, color: str = "", definitions: bool = False) -> str:
     if c.unsatisfiable:
         color, header_bg = "#c0392b", "#f6d5d1"
     if stereo:
-        title += f'<font point-size="9">&#171;{_h(stereo)}&#187;</font><br/>'
+        title += f'<font point-size="10">&#171;{_h(stereo)}&#187;</font><br/>'
     if c.deprecated:
-        title += '<font point-size="9">&#171;deprecated&#187;</font><br/>'
+        title += '<font point-size="10">&#171;deprecated&#187;</font><br/>'
         title += "<br/>".join(f'<s><font color="#6b675e">{_h(line)}</font></s>'
                               for line in _wrap(c.name))
     elif c.context:
@@ -135,7 +135,7 @@ def _label(c: UClass, color: str = "", definitions: bool = False) -> str:
             lines = lines[:3]
             lines[-1] = lines[-1].rstrip(".,;") + " …"
         text = "<br/>".join(_h(ln) for ln in lines)
-        rows.append(f'<tr><td align="left" balign="left"><font point-size="9" '
+        rows.append(f'<tr><td align="left" balign="left"><font point-size="10" '
                     f'color="#55524b"><i>{text}</i></font></td></tr>')
     if c.attrs:
         rows.append("<hr/>")
@@ -251,7 +251,7 @@ def _apply_layout(lines: list[str], layout) -> None:
 
 def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
            definitions: bool = False, chains: bool = False,
-           coverage: dict | None = None, layout=None) -> str:
+           coverage: dict | None = None, layout=None, compact_key: bool = False) -> str:
     """``definitions``: definition text under each class name
     (--show-definitions). ``chains``: property chains added to line labels
     (--draw-chains)."""
@@ -288,11 +288,11 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
         if e.src not in ids or e.dst not in ids:
             continue
         s, d = ids[e.src], ids[e.dst]
-        mult = (f', headlabel="{_attr(e.multiplicity)}", labelfontsize=9, '
+        mult = (f', headlabel="{_attr(e.multiplicity)}", labelfontsize=10, '
                 f'labelfontcolor="#3a5a8c", labeldistance=1.4') if e.multiplicity else ""
         if e.kind == "generalization":
             # A generalization set (DisjointUnion) shares one arrowhead.
-            gs = (f', samehead="{e.genset}", label="{_attr(e.label)}", fontsize=9'
+            gs = (f', samehead="{e.genset}", label="{_attr(e.label)}", fontsize=10'
                   if e.genset else f', label="{_attr(e.label)}"' if e.label else "")
             lines.append(
                 f'  {s} -> {d} [arrowhead=empty, color="#33312e", penwidth=1.2{gs}, '
@@ -360,7 +360,10 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
     special = any(e.kind in ("inferred", "disjoint", "member") or e.genset for e in m.edges) or \
         any(c.unsatisfiable or c.deprecated for c in m.classes.values()) or bool(m.properties)
     if legend and (len(groups) > 1 or special or coverage):
-        lines.append(_legend(m, coverage))
+        lines.append(_legend(m, coverage, compact=compact_key))
+        if compact_key:
+            # print: the key gets its own row instead of widening the figure
+            lines.append("  {rank=sink; legend}")
     lines.append("}")
     return "\n".join(lines)
 
@@ -384,7 +387,7 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
                    source: dict | None = None, definitions: bool = False,
                    chains: bool = False, coverage: dict | None = None,
                    aspect: float | None = None, max_rank_width: int = 12,
-                   pins: dict[str, tuple] | None = None) -> str:
+                   pins: dict[str, tuple] | None = None, for_print: bool = False) -> str:
     """Render with Graphviz.
 
     ``compact_labels``: "auto" (diagrams of 40+ classes), "on", "off". When on,
@@ -401,7 +404,7 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
 
     def text(layout=None) -> str:
         return to_dot(m, legend=legend, xlabels=compact, definitions=definitions,
-                      chains=chains, coverage=coverage, layout=layout)
+                      chains=chains, coverage=coverage, layout=layout, compact_key=for_print)
 
     layout = None
     m.layout_report = {}

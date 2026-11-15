@@ -13,22 +13,24 @@ def _coverage_rows(cov: dict | None) -> list[str]:
     if not cov:
         return []
     t = cov["totals"]
-    rows = ['<tr><td colspan="2" align="left"><b>Coverage</b> <font point-size="9">'
+    rows = ['<tr><td colspan="2" align="left"><b>Coverage</b> <font point-size="10">'
             f'{t["axioms"]} axioms: {t["drawn"]} drawn · {t["panel"]} in the source panel · '
             f'{t["dropped"]} left out</font></td></tr>']
     for reason, n in list(cov.get("dropped_reasons", {}).items())[:3]:
-        rows.append(f'<tr><td></td><td align="left"><font point-size="9">{n} left out: '
+        rows.append(f'<tr><td></td><td align="left"><font point-size="10">{n} left out: '
                     f'{_h(reason)}</font></td></tr>')
     notes = cov.get("notes") or []
     if notes:
-        rows.append(f'<tr><td></td><td align="left"><font point-size="9">{len(notes)} note(s): '
+        rows.append(f'<tr><td></td><td align="left"><font point-size="10">{len(notes)} note(s): '
                     + _h("; ".join(f"{n['name']} {n['reason']}" for n in notes[:2]))
                     + ("…" if len(notes) > 2 else "") + '</font></td></tr>')
     return rows
 
 
-def legend(m: UModel, coverage: dict | None = None) -> str:
-    """A key: one swatch per group, plus the line styles used."""
+def legend(m: UModel, coverage: dict | None = None, compact: bool = False) -> str:
+    """A key: one swatch per group, plus the line styles used. ``compact``
+    (print): no property or coverage rows -- they stay in the interactive
+    figure."""
     rows = ['<tr><td colspan="2" align="left"><b>Key</b></td></tr>']
     # one group says nothing: its swatch is left out
     shown = m.groups.values() if len(m.groups) > 1 else []
@@ -37,7 +39,7 @@ def legend(m: UModel, coverage: dict | None = None) -> str:
         ident = ""
         if g.iri:
             # an owl:imports ontology: show which version was drawn
-            ident = (f'<br/><font point-size="9" color="#6b675e">'
+            ident = (f'<br/><font point-size="10" color="#6b675e">'
                      f'{_h(g.version_iri or g.iri)}</font>')
         rows.append(
             f'<tr><td bgcolor="{g.color}" width="14"> </td>'
@@ -63,8 +65,9 @@ def legend(m: UModel, coverage: dict | None = None) -> str:
         extra += '<br/><font color="#6b675e">grey, struck-through: deprecated</font>'
     if any(c.kind == "individual" for c in m.classes.values()):
         extra += '<br/>underlined box: an individual (value)'
-    rows += _property_rows(m)
-    rows += _coverage_rows(coverage)
+    if not compact:
+        rows += _property_rows(m)
+        rows += _coverage_rows(coverage)
     rows.append('<tr><td align="left" colspan="2">'
                 '<font point-size="10">solid hollow arrow: subclass of<br/>'
                 'dashed hollow arrow: defined as a kind of (≡)<br/>'
@@ -86,7 +89,7 @@ def _property_rows(m: UModel) -> list[str]:
     if not m.properties:
         return []
     rows = ['<tr><td colspan="2" align="left"><b>Properties</b> '
-            '<font point-size="9">⁻¹ has inverse · ↔ symmetric · ⁺ transitive · ¹ functional'
+            '<font point-size="10">⁻¹ has inverse · ↔ symmetric · ⁺ transitive · ¹ functional'
             '</font></td></tr>']
     items = sorted(m.properties.values(), key=lambda p: p["name"].lower())
     for info in items[:_MAX_PROPERTY_ROWS]:
@@ -94,9 +97,9 @@ def _property_rows(m: UModel) -> list[str]:
         bits += [f"sub-property of {x}" for x in info["super"]]
         bits += [f"inverse of {x}" for x in info["inverse"]]
         bits += [f"chain: {x}" for x in info["chains"]]
-        text = _h(info["name"]) + ': <font point-size="9">' + _h("; ".join(bits)) + "</font>"
+        text = _h(info["name"]) + ': <font point-size="10">' + _h("; ".join(bits)) + "</font>"
         rows.append(f'<tr><td></td><td align="left" balign="left">{text}</td></tr>')
     if len(items) > _MAX_PROPERTY_ROWS:
-        rows.append(f'<tr><td></td><td align="left"><font point-size="9">… and '
+        rows.append(f'<tr><td></td><td align="left"><font point-size="10">… and '
                     f'{len(items) - _MAX_PROPERTY_ROWS} more (see the source panel)</font></td></tr>')
     return rows

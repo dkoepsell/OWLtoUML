@@ -56,7 +56,13 @@ def test_sidecar_pins_survive_regeneration(tmp_path):
     m = parse_ontology(str(onto))
     postprocess(m)
     nodes = {f"n{i}": cid for i, cid in enumerate(m.classes)}
-    got = pinning.from_svg(out.read_text(), nodes)
+    svg = out.read_text()
+    # positions are compared in layout space (Graphviz renormalizes the SVG)
+    from owl2uml.dot import render_dot_svg
+    m2 = parse_ontology(str(onto))
+    postprocess(m2)
+    render_dot_svg(m2, aspect=1.4, pins=pinning.pins(json.loads(side.read_text())))
+    got = pinning.to_layout_space(pinning.from_svg(svg, nodes), m2.layout_origin)
     assert abs(got[ROBOT]["x"] - want) < 0.5
 
 

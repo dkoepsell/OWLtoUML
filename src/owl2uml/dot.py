@@ -13,7 +13,7 @@ from pathlib import Path
 from .source import embed as embed_source
 from .model import UModel, UClass
 from .postprocess import shade, tint
-from . import twopass
+from . import pinning, twopass
 from .aspect import fit
 from .legend import INFERRED_COLOR, legend as _legend
 from .tools import graphviz
@@ -415,14 +415,20 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
     if source is not None and coverage:
         source = dict(source, coverage=coverage)
     out = ""
-    if engine == "dot":
+    neato = graphviz("neato")[0]
+    # What was drawn, so exports (PDF, PNG, TikZ, ...) reuse the same layout.
+    m.drawing = {"program": dot, "args": [f"-K{engine}"], "text": src.decode("utf-8"),
+                 "env": env}
+    if engine == "dot" and neato:
         # Compact: rank on the hierarchy only, then route the other lines.
         try:
             nid = {cid: f"n{i}" for i, cid in enumerate(m.classes)}
             by_node = {nid[iri]: xy for iri, xy in (pins or {}).items() if iri in nid}
-            out = twopass.render(src.decode("utf-8"), dot, graphviz("neato")[0], env,
-                                 _DOT_TIMEOUT_S, by_node) or ""
-        except (subprocess.TimeoutExpired, ValueError):
+            placed = twopass.positioned(src.decode("utf-8"), dot, env, _DOT_TIMEOUT_S, by_node)
+            if placed:
+                out = twopass.run(neato, ["-n2"], placed, env, "svg", _DOT_TIMEOUT_S).decode("utf-8")
+                m.drawing = {"program": neato, "args": ["-n2"], "text": placed, "env": env}
+        except (subprocess.TimeoutExpired, ValueError, RuntimeError):
             out = ""
     proc = None
     if "<svg" not in out:
@@ -433,6 +439,7 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
             # `dot` is too slow for this graph; fall back to the scalable engine.
             proc = _run_engine(dot, "sfdp", src, env, None)
         out = proc.stdout.decode("utf-8")
+        m.drawing["args"] = [a for a in proc.args if a.startswith("-K")]
     # On large/dense graphs the engine may emit recoverable warnings (e.g.
     # "trouble in init_rank") and exit non-zero while still producing a valid
     # SVG. Accept the output whenever it actually contains an <svg> element.
@@ -443,6 +450,10 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
         # never shows a border of another colour around the canvas.
         out = out[:i - 1].replace("<svg", f'<svg style="background-color:{BACKGROUND}"', 1) + \
             out[i - 1:i] + "\n" + SVG_STYLE + out[i:]
+        m.layout_origin = pinning.origin(out, m.drawing.get("text", ""),
+                                         {f"n{i}": f"n{i}" for i in range(len(m.classes))})
+        if source is not None:
+            source = dict(source, origin=list(m.layout_origin))
         return embed_source(out, source) if source else out
     raise RuntimeError((proc.stderr.decode("utf-8", "replace") if proc else "")
                        or "dot produced no SVG")

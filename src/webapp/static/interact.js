@@ -513,10 +513,12 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
     function layout() {
       if (!source || !source.nodes) return {};
       const out = {};
+      // Graphviz shifts the drawing to start at 0; "origin" undoes that.
+      const [ox, oy] = source.origin || [0, 0];
       for (const b of boxes()) {
         const iri = source.nodes[b.n.id];
         if (!iri || iri.startsWith("_:")) continue;
-        out[iri] = { x: +b.x.toFixed(2), y: +(-b.y).toFixed(2),
+        out[iri] = { x: +(b.x - ox).toFixed(2), y: +(-b.y - oy).toFixed(2),
                      pinned: Math.abs(b.n.off[0]) + Math.abs(b.n.off[1]) > 0.5 };
       }
       return out;

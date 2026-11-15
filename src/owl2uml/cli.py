@@ -269,7 +269,7 @@ def _store_layout(args, model, svg: str, saved: dict) -> None:
     """Sidecar with every class's current position (pins kept), and/or the
     layout ontology."""
     nodes = {f"n{i}": cid for i, cid in enumerate(model.classes)}
-    now = pinning.from_svg(svg, nodes)
+    now = pinning.to_layout_space(pinning.from_svg(svg, nodes), model.layout_origin)
     for iri, v in saved.items():
         if v.get("pinned"):
             now[iri] = v

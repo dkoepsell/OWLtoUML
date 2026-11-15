@@ -123,3 +123,26 @@ def from_svg(svg: str, nodes: dict[str, str], pinned: bool = False) -> dict[str,
             out[nodes[nid]] = {"x": round((min(xs) + max(xs)) / 2, 2),
                                "y": round(-(min(ys) + max(ys)) / 2, 2), "pinned": pinned}
     return out
+
+
+def origin(svg: str, drawing_text: str, nodes: dict[str, str]) -> tuple[float, float]:
+    """Offset between a rendered SVG's coordinates and the positions it was
+    drawn from. Graphviz moves the drawing so its bounding box starts at 0,
+    and the box changes when lines are rerouted, so saved positions are
+    stored in layout space (SVG position minus this offset)."""
+    import re
+    given = {}
+    for m in re.finditer(r'^\s*(n\d+) \[pos="(-?[\d.]+),(-?[\d.]+)!"', drawing_text, re.M):
+        given[m.group(1)] = (float(m.group(2)), float(m.group(3)))
+    drawn = from_svg(svg, {n: n for n in given})
+    deltas = sorted((drawn[n]["x"] - x, drawn[n]["y"] - y) for n, (x, y) in given.items()
+                    if n in drawn)
+    if not deltas:
+        return 0.0, 0.0
+    mid = deltas[len(deltas) // 2]
+    return round(mid[0], 2), round(mid[1], 2)
+
+
+def to_layout_space(positions: dict[str, dict], off: tuple[float, float]) -> dict[str, dict]:
+    return {k: dict(v, x=round(v["x"] - off[0], 2), y=round(v["y"] - off[1], 2))
+            for k, v in positions.items()}

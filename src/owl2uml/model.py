@@ -137,7 +137,9 @@ class UModel:
     # in the key (super-properties, inverses): for the coverage report
     mentioned: set[str] = field(default_factory=set)
     modules: dict[str, dict] = field(default_factory=dict)   # modules.assign
-    layout_report: dict = field(default_factory=dict)  # aspect.fit: ratio and steps
+    layout_report: dict = field(default_factory=dict)
+    layout_origin: tuple = (0.0, 0.0)   # pinning.origin of the last rendering
+    drawing: dict = field(default_factory=dict)   # dot.render_dot_svg: program + positioned DOT  # aspect.fit: ratio and steps
 
     def cls(self, cid: str, name: str | None = None) -> UClass:
         """Get or create a class node by id."""

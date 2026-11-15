@@ -40,14 +40,13 @@ def _positions(dot_bin: str, env, skel: str, timeout: float):
     return nodes, edges
 
 
-def render(text: str, dot_bin: str, neato_bin: str | None, env,
-           timeout: float = 45, pins: dict[str, tuple] | None = None) -> str | None:
-    """SVG from the two passes, or None when that is not possible (the
-    caller then runs plain `dot`). ``pins`` maps node ids to saved (x, y)
-    positions (pinning.py); they replace dot's, and lines touching a pinned
-    node are routed afresh."""
-    if not neato_bin:
-        return None
+def positioned(text: str, dot_bin: str, env, timeout: float = 45,
+               pins: dict[str, tuple] | None = None) -> str | None:
+    """The DOT text with every node pinned (pass 1) and the skeleton's line
+    routes kept, ready for ``neato -n2`` in any output format; None when
+    pass 1 fails. ``pins`` maps node ids to saved (x, y) positions
+    (pinning.py); they replace dot's, and lines touching a pinned node are
+    routed afresh."""
     pos = _positions(dot_bin, env, skeleton(text), timeout)
     if not pos:
         return None
@@ -68,7 +67,15 @@ def render(text: str, dot_bin: str, neato_bin: str | None, env,
             if e and e.group(1) in edges and not (ends & moved):
                 ln = ln.replace("[", f'[pos="{edges[e.group(1)]}", ', 1)
         lines.append(ln)
-    out = subprocess.run([neato_bin, "-n2", "-Tsvg"], input="\n".join(lines).encode("utf-8"),
-                         env=env, capture_output=True, timeout=timeout)
-    svg = out.stdout.decode("utf-8")
-    return svg if "<svg" in svg else None
+    return "\n".join(lines)
+
+
+def run(program: str, args: list[str], text: str, env, fmt: str, timeout: float = 60,
+        extra: list[str] | None = None) -> bytes:
+    """Run a Graphviz program on DOT text, returning the output bytes."""
+    out = subprocess.run([program, *args, f"-T{fmt}", *(extra or [])],
+                         input=text.encode("utf-8"), env=env, capture_output=True,
+                         timeout=timeout)
+    if not out.stdout:
+        raise RuntimeError(out.stderr.decode("utf-8", "replace") or f"no {fmt} output")
+    return out.stdout

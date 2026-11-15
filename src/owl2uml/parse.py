@@ -194,7 +194,7 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
         m.cls(cid, _display(uri, labels))
         return cid
 
-    for uri in class_uris:
+    for uri in sorted(class_uris):
         register_class(uri)
 
     # --- 2. Subclass (generalization) edges -------------------------------
@@ -369,7 +369,7 @@ def parse_ontology(path: str, fmt: str | None = None, graph: Graph | None = None
             if isinstance(s, URIRef):
                 prop_uris.add(s)
 
-    for p in prop_uris:
+    for p in sorted(prop_uris):
         name = _display(p, labels) + badges(g, p)
         # Domains/ranges may be unions of classes ("legal order or legal
         # content"); expand them to their named members.

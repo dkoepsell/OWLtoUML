@@ -13,6 +13,7 @@ from pathlib import Path
 from .source import embed as embed_source
 from .model import UModel, UClass
 from .postprocess import DEFAULT_COLOR, UPPER_COLOR, shade, tint
+from .aspect import fit
 from .tools import graphviz
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -295,9 +296,49 @@ def _property_rows(m: UModel) -> list[str]:
     return rows
 
 
+BACKGROUND = "#f7f5ef"
+
+
+def _apply_layout(lines: list[str], layout) -> None:
+    """Edge minlen and invisible rank-splitting edges from aspect.fit."""
+    if layout.minlen:
+        for k, line in enumerate(lines):
+            if " -> " in line and 'id="e' in line:
+                i = int(line.split('id="e', 1)[1].split('"', 1)[0])
+                if i in layout.minlen:
+                    lines[k] = line.replace("[", f"[minlen={layout.minlen[i]}, ", 1)
+    for lower, upper in layout.invisible:
+        lines.append(f"  {lower} -> {upper} [style=invis, weight=0];")
+    # Tree-style generalizations: a child's line ends at its row's junction
+    # (no arrowhead); one trunk with the hollow arrowhead reaches the parent.
+    rows_of = {}
+    for t, (parent, rows) in enumerate(layout.trees):
+        for r, row in enumerate(rows):
+            for i in row:
+                rows_of[i] = f"j{t}_{r}"
+        for r in range(len(rows)):
+            # same group as the parent: Graphviz keeps the trunk straight
+            lines.append(f'  j{t}_{r} [shape=point, width=0.03, color="#33312e", '
+                         f'group="tree{t}", class="uml-junction"];')
+            up = parent if r == 0 else f"j{t}_{r - 1}"
+            head = "empty" if r == 0 else "none"
+            lines.append(f'  j{t}_{r} -> {up} [arrowhead={head}, color="#33312e", '
+                         f'penwidth=1.2, class="rel-generalization rel-trunk"];')
+    for t, (parent, _rows) in enumerate(layout.trees):
+        lines.append(f'  {parent} [group="tree{t}"];')
+    if rows_of:
+        for k, line in enumerate(lines):
+            if " -> " in line and 'id="e' in line:
+                i = int(line.split('id="e', 1)[1].split('"', 1)[0])
+                if i in rows_of:
+                    tail, rest = line.split(" -> ", 1)
+                    rest = rest.split(" ", 1)[1].replace("arrowhead=empty", "arrowhead=none", 1)
+                    lines[k] = f"{tail} -> {rows_of[i]} {rest}"
+
+
 def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
            definitions: bool = False, chains: bool = False,
-           coverage: dict | None = None) -> str:
+           coverage: dict | None = None, layout=None) -> str:
     """``definitions``: definition text under each class name
     (--show-definitions). ``chains``: property chains added to line labels
     (--draw-chains)."""
@@ -309,8 +350,9 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
     lines = [
         "digraph G {",
         overlap +
-        f'  graph [rankdir=BT, bgcolor="#f7f5ef", splines={splines}, '
-        "nodesep=0.4, ranksep=0.7, pad=0.3];",
+        f'  graph [rankdir={layout.rankdir if layout else "BT"}, bgcolor="{BACKGROUND}", '
+        f"splines={splines}, nodesep={layout.nodesep if layout else 0.4}, "
+        f"ranksep={layout.ranksep if layout else 0.7}, pad=0.3];",
         '  node [shape=plaintext, fontname="Helvetica,Arial,sans-serif", fontsize=12];',
         '  edge [fontname="Helvetica,Arial,sans-serif", fontsize=10];',
     ]
@@ -345,10 +387,13 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
             )
         elif e.kind == "disjoint":
             lbl = f', label="{_attr(e.label)}", fontcolor="#c0392b"' if e.label else ""
+            # A ⊥ group node ranks just below its members (constraint on);
+            # a pairwise line must not pull ranks.
+            hub = m.classes[e.src].kind == "disjoint"
             lines.append(
                 f'  {s} -> {d} [dir=none, style=dotted, color="#c0392b", penwidth=1.4, '
-                f'constraint=false{lbl}, id="e{i}", class="rel-disjoint", '
-                f'tooltip="disjoint with"];')
+                f'constraint={"true" if hub else "false"}{lbl}, id="e{i}", '
+                f'class="rel-disjoint", tooltip="disjoint with"];')
         elif e.kind == "member":
             lines.append(
                 f'  {s} -> {d} [dir=none, style=dashed, color="#55524b", '
@@ -397,6 +442,8 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
                 f"fontcolor=\"#3a5a8c\", constraint=false{style}{lbl}{mult}, "
                 f'id="e{i}", class="rel-{_attr(e.kind)}", tooltip="{tip}"];'
             )
+    if layout:
+        _apply_layout(lines, layout)
     special = any(e.kind in ("inferred", "disjoint", "member") or e.genset for e in m.edges) or \
         any(c.unsatisfiable or c.deprecated for c in m.classes.values()) or bool(m.properties)
     if legend and (len(groups) > 1 or special or coverage):
@@ -422,7 +469,8 @@ _XLABEL_MIN = 40
 
 def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
                    source: dict | None = None, definitions: bool = False,
-                   chains: bool = False, coverage: dict | None = None) -> str:
+                   chains: bool = False, coverage: dict | None = None,
+                   aspect: float | None = None, max_rank_width: int = 12) -> str:
     """Render with Graphviz.
 
     ``compact_labels``: "auto" (diagrams of 40+ classes), "on", "off". When on,
@@ -435,12 +483,22 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
         raise RuntimeError("graphviz 'dot' not found (run scripts/setup.sh)")
     compact = compact_labels == "on" or (
         compact_labels == "auto" and len(m.classes) >= _XLABEL_MIN)
-    src = to_dot(m, legend=legend, xlabels=compact, definitions=definitions,
-                 chains=chains, coverage=coverage).encode("utf-8")
-    if source is not None and coverage:
-        source = dict(source, coverage=coverage)
     engine = _engine_for(m)
 
+    def text(layout=None) -> str:
+        return to_dot(m, legend=legend, xlabels=compact, definitions=definitions,
+                      chains=chains, coverage=coverage, layout=layout)
+
+    layout = None
+    m.layout_report = {}
+    if aspect and engine == "dot" and len(m.classes) > 2:
+        try:
+            layout, m.layout_report = fit(m, text, dot, env, aspect, max_rank_width)
+        except subprocess.TimeoutExpired:
+            layout = None
+    src = text(layout).encode("utf-8")
+    if source is not None and coverage:
+        source = dict(source, coverage=coverage)
     try:
         timeout = _DOT_TIMEOUT_S if engine == "dot" else None
         proc = _run_engine(dot, engine, src, env, timeout)
@@ -455,6 +513,9 @@ def render_dot_svg(m: UModel, legend: bool = True, compact_labels: str = "auto",
     if "<svg" in out:
         # Insert the inferred-view stylesheet just inside the root element.
         i = out.find(">", out.find("<svg")) + 1
-        out = out[:i] + "\n" + SVG_STYLE + out[i:]
+        # The page around the drawing takes the same colour, so a viewer
+        # never shows a border of another colour around the canvas.
+        out = out[:i - 1].replace("<svg", f'<svg style="background-color:{BACKGROUND}"', 1) + \
+            out[i - 1:i] + "\n" + SVG_STYLE + out[i:]
         return embed_source(out, source) if source else out
     raise RuntimeError(proc.stderr.decode("utf-8", "replace") or "dot produced no SVG")

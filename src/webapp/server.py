@@ -21,6 +21,7 @@ from owl2uml.fetch import FetchError, fetch          # noqa: E402
 from owl2uml import coverage, reason               # noqa: E402
 from owl2uml.postprocess import postprocess       # noqa: E402
 from owl2uml.dot import dot_available, render_dot_svg  # noqa: E402
+from owl2uml.aspect import parse_target               # noqa: E402
 from owl2uml.layout import layout                  # noqa: E402
 from owl2uml.render import render_svg              # noqa: E402
 from owl2uml.source import build_source            # noqa: E402
@@ -150,7 +151,7 @@ def render():
                 except Exception:  # noqa: BLE001 - the diagram matters more
                     src = None
             svg = render_dot_svg(model, source=src, definitions=_flag("definitions"),
-                                 chains=_flag("chains"), coverage=cov)
+                                 chains=_flag("chains"), coverage=cov, aspect=_aspect())
             engine = "graphviz"
         else:
             w, h = layout(model)
@@ -169,12 +170,24 @@ def render():
         edits=edit_report,
         loader=loaded.report(),
         coverage=cov,
+        layout=model.layout_report,
         groups=[
             {"name": g.name, "color": g.color, "count": g.count, "upper": g.upper,
              "iri": g.iri, "version_iri": g.version_iri}
             for g in sorted(model.groups.values(), key=lambda g: (g.upper, g.name))
         ],
     )
+
+
+def _aspect():
+    """Target width/height: the browser sends its drawing area's ratio
+    ("aspect"), so the layout uses the space available. Clamped to the
+    1:2 .. 2:1 range a figure should keep."""
+    try:
+        r = parse_target(request.form.get("aspect") or "auto")
+    except ValueError:
+        r = parse_target("auto")
+    return min(2.0, max(0.5, r)) if r else None
 
 
 def _flag(name: str) -> bool:

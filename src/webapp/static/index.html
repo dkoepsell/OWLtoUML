@@ -25,6 +25,10 @@
       <button id="fit" title="Fit to view">Fit</button>
       <button id="spread" title="Spread classes out to fill the window, keeping their arrangement">Fill screen</button>
       <button id="zoomIn" title="Zoom in">&plus;</button>
+      <label class="stretch" title="Spread classes apart (or closer) horizontally">&harr;
+        <input type="range" id="stretchX" min="40" max="300" value="100" step="5" /></label>
+      <label class="stretch" title="Spread classes apart (or closer) vertically">&varr;
+        <input type="range" id="stretchY" min="40" max="300" value="100" step="5" /></label>
       <span class="sep"></span>
       <button id="source" title="Show or hide the OWL source of the clicked class or line (s)" hidden>Source</button>
       <button id="viewToggle" title="Show the processes as a flow in swimlanes">Flow</button>

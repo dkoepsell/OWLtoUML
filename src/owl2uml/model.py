@@ -134,6 +134,7 @@ class UModel:
     # entities shown inside a box rather than as one (oneOf members) or named
     # in the key (super-properties, inverses): for the coverage report
     mentioned: set[str] = field(default_factory=set)
+    layout_report: dict = field(default_factory=dict)  # aspect.fit: ratio and steps
 
     def cls(self, cid: str, name: str | None = None) -> UClass:
         """Get or create a class node by id."""

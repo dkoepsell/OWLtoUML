@@ -51,6 +51,7 @@ async function renderFile(file) {
   fd.append("file", file);
   fd.append("format", $("format").value);
   fd.append("imports", $("imports").value);
+  fd.append("aspect", stageAspect());
   if ($("keepUnused").checked) fd.append("keep_unused", "1");
   if ($("reason").checked) fd.append("reason", "auto");
   if ($("definitions").checked) fd.append("definitions", "1");
@@ -82,6 +83,7 @@ async function renderFile(file) {
   lastSvgText = data.svg;
   lastName = file.name.replace(/\.[^.]+$/, "") || "diagram";
   mountSvg(data.svg);
+  resetStretch();
   setupFlow(data);
   if (data.view === "flow") {
     const f = data.flow;
@@ -336,6 +338,28 @@ function spreadToFit() {
   else setStatus("Diagram already fills the window");
 }
 
+// Width / height sliders: each move stretches the gaps between classes by the
+// change since the slider's last value (100 = as laid out).
+const stretchAt = { x: 100, y: 100 };
+function onStretch(axis) {
+  const el = $(axis === "x" ? "stretchX" : "stretchY");
+  const v = Number(el.value);
+  if (!interact || !svgEl) { el.value = 100; return; }
+  const k = v / stretchAt[axis];
+  stretchAt[axis] = v;
+  if (interact.stretch(axis === "x" ? k : 1, axis === "y" ? k : 1)) refit();
+}
+function resetStretch() {
+  stretchAt.x = stretchAt.y = 100;
+  $("stretchX").value = $("stretchY").value = 100;
+}
+
+// Width/height of the drawing area, so the server lays the diagram out for it.
+function stageAspect() {
+  const st = $("stage").getBoundingClientRect();
+  return st.width > 0 && st.height > 0 ? (st.width / st.height).toFixed(3) : "auto";
+}
+
 function step(delta) {
   if (!matches.length) return;
   matchIdx = (matchIdx + delta + matches.length) % matches.length;
@@ -409,6 +433,8 @@ window.addEventListener("DOMContentLoaded", () => {
   $("zoomIn").addEventListener("click", () => panZoom && panZoom.zoomIn());
   $("zoomOut").addEventListener("click", () => panZoom && panZoom.zoomOut());
   $("fit").addEventListener("click", refit);
+  $("stretchX").addEventListener("input", () => onStretch("x"));
+  $("stretchY").addEventListener("input", () => onStretch("y"));
   $("download").addEventListener("click", downloadSvg);
   $("clearFocus").addEventListener("click", () => interact && interact.clear());
   $("inferred").addEventListener("click", toggleInferred);

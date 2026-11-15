@@ -251,3 +251,7 @@ svg g.edge.o2u-sel path { stroke: #b5541c !important; stroke-width: 3 !important
 svg g.node.o2u-sel polygon, svg g.node.o2u-sel path { stroke: #b5541c !important; stroke-width: 2.5 !important; }
 svg .o2u-handle { fill: #fff; stroke: #b5541c; stroke-width: 2; cursor: crosshair; }
 svg .o2u-temp { stroke: #b5541c; stroke-width: 2; stroke-dasharray: 4 3; pointer-events: none; }
+
+/* width / height stretch sliders in the toolbar */
+.stretch { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.85rem; color: var(--muted); }
+.stretch input[type=range] { width: 5.5rem; }

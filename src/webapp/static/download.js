@@ -33,6 +33,11 @@ async function downloadSvg() {
     out.setAttribute("width", `${b.width}pt`);
     out.setAttribute("height", `${b.height}pt`);
   }
+  // Same colour all round: a viewer that letterboxes the file shows no
+  // border of another colour (the root is transparent otherwise).
+  const canvas = svgEl.querySelector("g.graph > polygon");
+  const fill = (canvas && canvas.getAttribute("fill")) || "#f7f5ef";
+  out.setAttribute("style", `background-color:${fill}`);
   out.querySelectorAll("style.oi-style, path.oi-hit, g.o2u-draft").forEach((n) => n.remove());
   out.classList.remove("o2u-editing");
   out.querySelectorAll(".o2u-deleted, .o2u-moved, .o2u-sel")

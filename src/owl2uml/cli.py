@@ -7,6 +7,7 @@ import sys
 from .parse import load_graph, parse_ontology, property_view
 from .load import IMPORT_MODES, LOADERS, annotate_model, load
 from . import coverage, reason
+from .aspect import parse_target
 from .postprocess import postprocess
 from .layout import layout
 from .render import render_svg
@@ -75,6 +76,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--property-view", action="store_true",
                     help="draw the property hierarchy (sub-properties, inverses, "
                          "domains, ranges, characteristics) instead of the classes")
+    ap.add_argument("--aspect", default="auto",
+                    help="target width:height of the figure, e.g. 1.4, 16:9 or 'auto' "
+                         "(1.4); 'off' keeps Graphviz's own layout")
+    ap.add_argument("--max-rank-width", type=int, default=12, metavar="N",
+                    help="when the figure is too wide, wrap ranks of more than N "
+                         "classes (default 12)")
     ap.add_argument("--coverage-out", metavar="FILE",
                     help="where to write the coverage report: what happened to every "
                          "axiom (default: <output>.coverage.json; '-' for none)")
@@ -141,7 +148,14 @@ def main(argv: list[str] | None = None) -> int:
         svg = render_dot_svg(model, legend=not args.no_legend,
                              compact_labels=args.compact_labels, source=src,
                              definitions=args.show_definitions, chains=args.draw_chains,
-                             coverage=coverage.summary(cov) if cov else None)
+                             coverage=coverage.summary(cov) if cov else None,
+                             aspect=parse_target(args.aspect),
+                             max_rank_width=args.max_rank_width)
+        lr = model.layout_report
+        if lr:
+            how = ", ".join(lr["steps"]) or "no change needed"
+            print(f"aspect: {lr['start']}:1 -> {lr['ratio']}:1 (target {lr['target']}; {how})"
+                  + ("" if lr["within_band"] else " - still outside 1:2..2:1"), file=sys.stderr)
         if args.interactive:
             svg = inline_viewer(svg)
         engine = "graphviz dot"

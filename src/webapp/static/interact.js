@@ -210,9 +210,11 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
 
     // Enlarge the background so it still covers every class (never shrinks
     // below Graphviz's original canvas).
-    function fitCanvas() {
+    function fitCanvas(tight) {
       if (!bg) return;
-      const o = pairs(tokens(bgPoints));
+      // tight: hug the classes (after a squeeze), else never shrink below
+      // Graphviz's original canvas. The key is a node too, so it stays inside.
+      const o = tight ? [] : pairs(tokens(bgPoints));
       const [x0, y0, x1, y1] = extent(boxes());
       const l = Math.min(x0 - PAD, ...o.map((p) => p[0])), r = Math.max(x1 + PAD, ...o.map((p) => p[0]));
       const t = Math.min(y0 - PAD, ...o.map((p) => p[1])), b = Math.max(y1 + PAD, ...o.map((p) => p[1]));
@@ -244,6 +246,25 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       }
       edges.forEach(redraw);
       fitCanvas();
+      return true;
+    }
+
+    // Stretch (or squeeze) the gaps between classes by kx horizontally and ky
+    // vertically, about the drawing's centre. Box sizes stay; only centres
+    // move, so arrangement and ranks are kept. Used by the width/height
+    // sliders, which pass the change since their last position.
+    function stretch(kx, ky) {
+      const bs = boxes();
+      if (bs.length < 2) return false;
+      const [x0, y0, x1, y1] = extent(bs);
+      const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+      for (const b of bs) {
+        b.n.off[0] += (b.x - mx) * (kx - 1);
+        b.n.off[1] += (b.y - my) * (ky - 1);
+        placeNode(b.n);
+      }
+      edges.forEach(redraw);
+      fitCanvas(true);
       return true;
     }
 
@@ -518,6 +539,7 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       clear,
       reset,
       spread,
+      stretch,
       bounds,
       destroy() {
         swallowed.forEach((t) => svg.removeEventListener(t, swallow, true));

@@ -1,0 +1,101 @@
+name: owl2uml diff
+description: >-
+  Draw what a pull request changes in an OWL ontology (added, removed,
+  renamed, newly inferred, unsatisfiable), post it as a PR comment, and keep
+  docs/diagrams up to date on the default branch.
+branding:
+  icon: git-pull-request
+  color: green
+
+inputs:
+  ontology:
+    description: Path of the ontology in the repository (default - an ODK src/ontology/*-edit.* file)
+    default: ""
+  base:
+    description: Commit to compare with (default - the pull request's base)
+    default: ""
+  profile:
+    description: Notation profiles, e.g. bfo,legal or auto
+    default: none
+  reason:
+    description: Reasoner for the inferred layer - hermit, owlrl, auto or none
+    default: hermit
+  modules:
+    description: On the default branch, also draw one figure per module
+    default: "false"
+  fail-on:
+    description: >-
+      Comma-separated - unsatisfiable, inconsistent, new-orphans,
+      removed-without-deprecation, coverage-drop
+    default: ""
+  diff-scope:
+    description: changed, 1hop or all
+    default: 1hop
+  comment:
+    description: Post (or update) a comment on the pull request
+    default: "true"
+  image-branch:
+    description: >-
+      Branch the PNG is pushed to so the comment can show it (needs
+      contents - write). Empty - no image in the comment, only the summary.
+    default: owl2uml-images
+  docs-dir:
+    description: Where diagrams are kept up to date on pushes to the default branch (empty - off)
+    default: docs/diagrams
+  token:
+    description: Token for the comment and pushes
+    default: ${{ github.token }}
+
+outputs:
+  failed:
+    description: '"true" when a fail-on condition held'
+    value: ${{ steps.run.outputs.failed }}
+  summary:
+    description: Path of the Markdown summary
+    value: ${{ steps.run.outputs.summary }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - name: Install Graphviz and Java
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq graphviz default-jre-headless > /dev/null
+    - name: Install owl2uml
+      shell: bash
+      run: pip install -q -r "$GITHUB_ACTION_PATH/../requirements.txt"
+    - id: run
+      name: Diff the ontology
+      shell: bash
+      env:
+        INPUT_ONTOLOGY: ${{ inputs.ontology }}
+        INPUT_BASE: ${{ inputs.base || github.event.pull_request.base.sha }}
+        INPUT_PROFILE: ${{ inputs.profile }}
+        INPUT_REASON: ${{ inputs.reason }}
+        INPUT_MODULES: ${{ inputs.modules }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_DIFF_SCOPE: ${{ inputs.diff-scope }}
+        INPUT_COMMENT: ${{ inputs.comment }}
+        INPUT_IMAGE_BRANCH: ${{ inputs.image-branch }}
+        INPUT_DOCS_DIR: ${{ inputs.docs-dir }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      run: python "$GITHUB_ACTION_PATH/run.py"
+    - name: Upload the figures
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: owl2uml-diff
+        path: owl2uml-diff/
+        if-no-files-found: ignore
+    - name: Fail on the checks
+      if: steps.run.outputs.failed == 'true'
+      shell: bash
+      run: |
+        echo "owl2uml: fail-on conditions hold (see the summary)" >&2
+        exit 1

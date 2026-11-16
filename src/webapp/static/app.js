@@ -36,6 +36,7 @@ function hideOverlay() { $("overlay").hidden = true; }
 // ---- upload / render -------------------------------------------------------
 async function renderFile(file) {
   if (!file) return;
+  if (typeof O2uDiff !== "undefined" && O2uDiff.wanted()) return O2uDiff.run(file);   // diffui.js
   showOverlay("Parsing & laying out…");
   setStatus(`Uploading ${file.name} (${(file.size / 1024).toFixed(0)} KB)…`);
 

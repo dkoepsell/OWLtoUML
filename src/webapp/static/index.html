@@ -11,6 +11,7 @@
   <script defer src="/static/edit.js"></script>
   <script defer src="/static/loading.js"></script>
   <script defer src="/static/download.js"></script>
+  <script defer src="/static/diffui.js"></script>
   <script defer src="/static/app.js"></script>
 </head>
 <body>
@@ -154,6 +155,16 @@
             <option value="core">core</option>
             <option value="bfo">BFO</option>
             <option value="bfo,legal">BFO + legal (LOF)</option>
+          </select>
+        </div>
+        <div class="fmtrow">
+          <label class="smallfile" title="Choose the older version here, then the newer one as the ontology: the diagram shows what changed (green added, red removed, amber changed, orange inferred)">
+            Compare with older version <input type="file" id="oldFile" accept=".owl,.ttl,.rdf,.xml,.n3,.nt,.jsonld,.json,.trig,.owx,.omn,.ofn,.obo" />
+          </label>
+          <select id="diffScope" title="What the comparison draws">
+            <option value="1hop">changes + neighbours</option>
+            <option value="changed">changes only</option>
+            <option value="all">whole ontology</option>
           </select>
         </div>
         <div class="fmtrow flowfiles" id="flowfiles" hidden>

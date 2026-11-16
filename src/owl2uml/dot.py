@@ -340,8 +340,9 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
             # view can be compared with the asserted one on the same layout.
             lines.append(
                 f'  {s} -> {d} [arrowhead=empty, color="{INFERRED_COLOR}", '
-                f'penwidth=2, id="e{i}", class="rel-inferred", '
-                f'tooltip="subclass of (inferred by the reasoner)"];'
+                f'penwidth=2, id="e{i}", class="rel-inferred"'
+                + (f', label="{_attr(e.label)}", fontcolor="{INFERRED_COLOR}"' if e.label else "")
+                + f', tooltip="subclass of (inferred by the reasoner{_attr("; " + e.note if e.note else "")})"];'
             )
         elif e.kind == "equivalent":
             lines.append(
@@ -385,7 +386,8 @@ def to_dot(m: UModel, legend: bool = True, xlabels: bool = False,
             # print: the key gets its own row instead of widening the figure
             lines.append("  {rank=sink; legend}")
     lines.append("}")
-    return "\n".join(lines)
+    restyle = m.render.get("restyle")       # e.g. the version diff's colours
+    return "\n".join(restyle(lines) if restyle else lines)
 
 
 def _run_engine(dot: str, engine: str, src: bytes, env: dict | None,

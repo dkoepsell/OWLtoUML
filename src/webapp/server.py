@@ -375,6 +375,11 @@ def _render_flow(data: bytes, suffix: str, fmt):
                    reasoning=None, groups=[])
 
 
+from webapp import diff_api  # noqa: E402
+
+diff_api.register(app, _load_upload, _pins, _profile, _int_form)
+
+
 def main() -> None:
     port = int(os.environ.get("PORT", "5000"))
     host = os.environ.get("HOST", "127.0.0.1")

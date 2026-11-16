@@ -777,7 +777,7 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       const summary = (c.lane ? `<p class="o2u-note">Lane: ${esc(c.lane)}</p>` : "") + fl + annHtml(c) +
         (c.ax.length ? "<h4>Axioms</h4>" + c.ax.map((a) => axHtml(a)).join("")
                      : '<p class="o2u-note">No logical axioms: the class is only declared here.</p>');
-      return { title: c.label, kind: "class", iri: c.iri, curie: c.curie, summary, man: frame(c), ttl: c.ttl };
+      return { title: c.label, kind: "class", iri: c.iri, curie: c.curie, summary: diffHtml("nodes", iri) + summary, man: frame(c), ttl: c.ttl };
     }
 
     function propView(iri) {
@@ -840,7 +840,18 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
       const kind = { generalization: "subclass of", definition: "defined as a kind of",
         restriction: "restriction", equivalent: "equivalent class", association: "relation",
         inferred: "inferred subclass of" }[e.kind] || e.kind;
-      return { title, kind, summary, man, ttl };
+      return { title, kind, summary: diffHtml("edges", eid) + summary, man, ttl };
+    }
+
+    // Version diff (owl2uml diff): the old and new OWL side by side.
+    function diffHtml(where, id) {
+      const d = src.diff && src.diff[where][id];
+      if (!d) return "";
+      const what = { added: "Added in the new version", removed: "Removed in the new version",
+        changed: "Changed", "inferred-added": "Newly inferred", "inferred-removed": "No longer inferred" }[d.status] || d.status;
+      const col = (t, x) => `<div style="min-width:0"><h4>${t}</h4><pre style="overflow:auto">${esc(x || "—")}</pre></div>`;
+      return `<div class="o2u-diff"><p><b>${esc(what)}</b></p>` +
+        `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${col("Old", d.old)}${col("New", d.new)}</div></div>`;
     }
 
     function render() {

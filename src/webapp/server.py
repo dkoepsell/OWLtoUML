@@ -39,8 +39,6 @@ app.config["MAX_CONTENT_LENGTH"] = _max_mb * 1024 * 1024
 LOAD_TIMEOUT = float(os.environ.get("LOAD_TIMEOUT_S", "60"))
 
 
-@app.errorhandler(413)
-
 def _profile(names: str, graph):
     """Notation profile from the form: 'none', 'auto', or bundled names."""
     from owl2uml.profiles import available, detect, load
@@ -56,6 +54,8 @@ def _int_form(key: str, default: int, lo: int, hi: int) -> int:
     except (TypeError, ValueError):
         return default
 
+
+@app.errorhandler(413)
 def too_large(_exc):
     return jsonify(error=f"the upload is larger than the {_max_mb} MB limit"), 413
 

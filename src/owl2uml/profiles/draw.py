@@ -57,6 +57,8 @@ def hint_lines(m: UModel, ids: dict[str, str]) -> list[str]:
             for col, nid in enumerate(row):
                 out.append(f'  {nid} [group="motif{k}c{col}"];')
         for row in rows:
+            if not row:             # a partial figure (module view, diff) may lack a row
+                continue
             out.append(f'  {{rank=same; {"; ".join(row)};}}  // motif: {motif["name"]}')
             # flat invisible edges fix the left-to-right order in the row
             for a, b in zip(row, row[1:]):
@@ -64,7 +66,7 @@ def hint_lines(m: UModel, ids: dict[str, str]) -> list[str]:
         for above, below in zip(rows, rows[1:]):
             for a, b in zip(above, below):
                 out.append(f"  {b} -> {a} [style=invis, weight=20];")
-    return out
+    return out + list(r.get("extra_dot") or [])   # e.g. the diff key (diff/render.py)
 
 
 def edge_extra(e) -> str:

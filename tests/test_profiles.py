@@ -179,3 +179,12 @@ def test_pinned_classes_carry_their_tree_junctions():
     j = next(ln for ln in out.splitlines() if ln.strip().startswith("j0_0 ["))
     x, y = (float(v) for v in j.split('pos="', 1)[1].split("!", 1)[0].split(","))
     assert x == 100.0 and 100 < y < 500
+
+
+def test_motif_rows_missing_from_a_partial_figure():
+    """A module view or diff may show none of a motif's classes: no empty
+    rank=same statement (a Graphviz syntax error)."""
+    m, _, _ = model("legal")
+    m.classes = {k: v for k, v in m.classes.items() if "ODP003_000100" not in k}
+    m.edges = [e for e in m.edges if e.src in m.classes and e.dst in m.classes]
+    assert "rank=same; ;" not in to_dot(m)

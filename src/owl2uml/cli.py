@@ -31,10 +31,15 @@ def main(argv: list[str] | None = None) -> int:
     if argv[:1] == ["diff"]:
         from .diff.cli import main as diff_main
         return diff_main(argv[1:])
+    if argv[:1] == ["claims"]:
+        from .claims.cli import main as claims_main
+        return claims_main(argv[1:])
     ap = argparse.ArgumentParser(
         prog="owl2uml",
         description="Convert an OWL/RDFS ontology to a UML class diagram in SVG "
-                    "('owl2uml diff OLD NEW' draws what changed between two versions). "
+                    "('owl2uml diff OLD NEW' draws what changed between two versions; "
+                    "'owl2uml claims ONTOLOGY' lists what it asserts, entails, allows and "
+                    "leaves open, in English). "
                     "Reads RDF/XML, Turtle, N3, N-Triples, JSON-LD and TriG, and "
                     "with Java + ROBOT also OWL/XML, Manchester, Functional and OBO.",
     )

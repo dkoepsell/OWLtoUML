@@ -1,0 +1,90 @@
+ENTAILED (9)
+Every accountable agent is specifically depended on by some accountability capacity.
+Every answerability is occasioned by some normative breach.
+Every irreversibly accountable agent is specifically depended on by some control capacity.
+Every irreversibly accountable agent is specifically depended on by some moral residue.
+Every irreversibly accountable agent is specifically depended on by some normative standing.
+Every irreversibly accountable agent is specifically depended on by some repair capacity.
+Every normative breach has as participant some material entity.
+Every repeat breach is preceded by some normative breach.
+Every resettable artifact is specifically depended on by some resettability.
+
+REFUTED (3)
+No irreversibly accountable agent is a resettable artifact.
+No irreversibly accountable agent is a bearer of a resettability.
+No resettable artifact is a bearer of a displaced answerability.
+
+POSSIBLE (1)
+There can be a normative breach that is attributed to some resettable artifact.
+
+UNDETERMINED (3)
+The ontology neither entails nor rules out that every accountable agent is a resettable artifact.
+The ontology neither entails nor rules out that every irreversibly accountable agent is an accountable agent.
+The ontology neither entails nor rules out that every resettable artifact is an accountable agent.
+
+ASSERTED (65)
+A displaced answerability is defined as an answerability that answers for some normative breach that is attributed to some resettable artifact.
+A repeat breach is defined as a normative breach that is a repeat of some normative breach.
+A resettable artifact is defined as a material entity that is a bearer of some resettability.
+An accountable agent is defined as a material entity that is a bearer of some accountability capacity.
+An irreversibly accountable agent is defined as a material entity that is a bearer of some repair capacity and is a bearer of some control capacity and is a bearer of some normative standing and is a bearer of some moral residue and is an agent of some normative breach.
+Every accountability capacity is a disposition.
+Every accountability record is a generically dependent continuant.
+Every accountability record records some normative breach.
+Every accountability response is a process.
+Every accountability response responds to some normative breach.
+Every accountable agent is a material entity.
+Every answerability answers for some normative breach.
+Every answerability is a disposition.
+Every apology is an accountability response.
+Every apology realizes some answerability.
+Every control capacity is a disposition.
+Every displaced answerability is an answerability.
+Every irreversibly accountable agent is a material entity.
+Every moral residue is a relational quality.
+Every moral residue is occasioned by some normative breach.
+Every narrative revision has as participant some accountability record.
+Every narrative revision is an accountability response.
+Every norm is a generically dependent continuant.
+Every normative breach is a process.
+Every normative breach is attributed to some material entity.
+Every normative breach violates some norm.
+Every normative standing is a quality.
+Every refusal of amends is an accountability response.
+Every refusal of amends realizes some answerability.
+Every repair capacity is a disposition.
+Every repeat breach is a normative breach.
+Every reset is an accountability response.
+Every reset realizes some resettability.
+Every resettability is a disposition.
+Every resettable artifact is a material entity.
+Every restitution is an accountability response.
+Every restitution realizes some answerability.
+Every restitution realizes some repair capacity.
+Every retraining is an accountability response.
+Every sanction is an accountability response.
+Every sanction realizes some answerability.
+For any x and y: if x answers for y, then x is occasioned by y.
+For any x and y: if x is a repeat of y, then x is preceded by y.
+For any x and y: if x is attributed to y, then x has as participant y.
+For any x and y: x is attributed to y exactly when y is an agent of x.
+No resettable artifact is a bearer of a moral residue.
+No resettable artifact is a bearer of an answerability.
+Only a normative breach is a repeat of anything.
+Only a normative breach is attributed to anything.
+Only a normative breach violates anything.
+Only a normative breach wrongs anything.
+Only a specifically dependent continuant is occasioned by anything.
+Only an accountability record records anything.
+Only an accountability response responds to anything.
+Only an answerability answers for anything.
+Only an answerability is codified as anything.
+Whatever something answers for is a normative breach.
+Whatever something is a repeat of is a normative breach.
+Whatever something is attributed to is an independent continuant.
+Whatever something is codified as is a legal position.
+Whatever something is occasioned by is a normative breach.
+Whatever something records is a process.
+Whatever something responds to is a normative breach.
+Whatever something violates is a norm.
+Whatever something wrongs is an independent continuant.

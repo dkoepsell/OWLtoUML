@@ -1,0 +1,82 @@
+id	status	tier	grammar	text	manchester	defn_linked	justification	axiom_id
+c0001	ENTAILED	inferred	G3	Every accountable agent is specifically depended on by some accountability capacity.	'accountable agent' SubClassOf 'specifically depended on by' some 'accountability capacity'	true	b248326151c7;93135d2023c9	
+c0002	ENTAILED	inferred	G3	Every answerability is occasioned by some normative breach.	answerability SubClassOf 'occasioned by' some 'normative breach'	false	7cc0e339a284;4c590e77d245	
+c0003	ENTAILED	inferred	G3	Every irreversibly accountable agent is specifically depended on by some control capacity.	'irreversibly accountable agent' SubClassOf 'specifically depended on by' some 'control capacity'	true	93135d2023c9;af344a01bf74	
+c0004	ENTAILED	inferred	G3	Every irreversibly accountable agent is specifically depended on by some moral residue.	'irreversibly accountable agent' SubClassOf 'specifically depended on by' some 'moral residue'	true	93135d2023c9;af344a01bf74	
+c0005	ENTAILED	inferred	G3	Every irreversibly accountable agent is specifically depended on by some normative standing.	'irreversibly accountable agent' SubClassOf 'specifically depended on by' some 'normative standing'	true	93135d2023c9;af344a01bf74	
+c0006	ENTAILED	inferred	G3	Every irreversibly accountable agent is specifically depended on by some repair capacity.	'irreversibly accountable agent' SubClassOf 'specifically depended on by' some 'repair capacity'	true	93135d2023c9;af344a01bf74	
+c0007	ENTAILED	inferred	G3	Every normative breach has as participant some material entity.	'normative breach' SubClassOf 'has participant' some 'material entity'	false	dc360758e377;44d6ed1bfe26	
+c0008	ENTAILED	inferred	G3	Every repeat breach is preceded by some normative breach.	'repeat breach' SubClassOf 'preceded by' some 'normative breach'	true	62ab39918e59;e84a1a12c0ec	
+c0009	ENTAILED	inferred	G3	Every resettable artifact is specifically depended on by some resettability.	'resettable artifact' SubClassOf 'specifically depended on by' some resettability	true	93135d2023c9;469689e7b3af	
+c0010	REFUTED	inferred	G2	No irreversibly accountable agent is a resettable artifact.	'irreversibly accountable agent' DisjointWith 'resettable artifact'	false	af344a01bf74;90e786f23c1b	
+c0011	REFUTED	inferred	G4	No irreversibly accountable agent is a bearer of a resettability.	'irreversibly accountable agent' SubClassOf not ('bearer of' some resettability)	false	af344a01bf74;469689e7b3af;90e786f23c1b	
+c0012	REFUTED	inferred	G4	No resettable artifact is a bearer of a displaced answerability.	'resettable artifact' SubClassOf not ('bearer of' some 'displaced answerability')	true	8044a683b12a;9aca7f21b3f6	
+c0013	POSSIBLE	possible	G5	There can be a normative breach that is attributed to some resettable artifact.	not ('normative breach' and ('attributed to' some 'resettable artifact') SubClassOf owl:Nothing)	false		
+c0014	UNDETERMINED	undetermined	G1	The ontology neither entails nor rules out that every accountable agent is a resettable artifact.	'accountable agent' SubClassOf 'resettable artifact'	false		
+c0015	UNDETERMINED	undetermined	G1	The ontology neither entails nor rules out that every irreversibly accountable agent is an accountable agent.	'irreversibly accountable agent' SubClassOf 'accountable agent'	false		
+c0016	UNDETERMINED	undetermined	G1	The ontology neither entails nor rules out that every resettable artifact is an accountable agent.	'resettable artifact' SubClassOf 'accountable agent'	false		
+c0017	ASSERTED	asserted	A	A displaced answerability is defined as an answerability that answers for some normative breach that is attributed to some resettable artifact.	'displaced answerability' EquivalentTo answerability and ('answers for' some ('normative breach' and ('attributed to' some 'resettable artifact')))	false		8044a683b12a
+c0018	ASSERTED	asserted	A	A repeat breach is defined as a normative breach that is a repeat of some normative breach.	'repeat breach' EquivalentTo 'normative breach' and ('repeat of' some 'normative breach')	false		62ab39918e59
+c0019	ASSERTED	asserted	A	A resettable artifact is defined as a material entity that is a bearer of some resettability.	'resettable artifact' EquivalentTo 'material entity' and ('bearer of' some resettability)	false		469689e7b3af
+c0020	ASSERTED	asserted	A	An accountable agent is defined as a material entity that is a bearer of some accountability capacity.	'accountable agent' EquivalentTo 'material entity' and ('bearer of' some 'accountability capacity')	false		b248326151c7
+c0021	ASSERTED	asserted	A	An irreversibly accountable agent is defined as a material entity that is a bearer of some repair capacity and is a bearer of some control capacity and is a bearer of some normative standing and is a bearer of some moral residue and is an agent of some normative breach.	'irreversibly accountable agent' EquivalentTo 'material entity' and ('bearer of' some 'repair capacity') and ('bearer of' some 'control capacity') and ('bearer of' some 'normative standing') and ('bearer of' some 'moral residue') and ('agent of' some 'normative breach')	false		af344a01bf74
+c0022	ASSERTED	asserted	A	Every accountability capacity is a disposition.	'accountability capacity' SubClassOf disposition	false		3fbc88017cc4
+c0023	ASSERTED	asserted	A	Every accountability record is a generically dependent continuant.	'accountability record' SubClassOf 'generically dependent continuant'	false		c3333093a488
+c0024	ASSERTED	asserted	A	Every accountability record records some normative breach.	'accountability record' SubClassOf records some 'normative breach'	false		6f2146367726
+c0025	ASSERTED	asserted	A	Every accountability response is a process.	'accountability response' SubClassOf process	false		3c95de2c1396
+c0026	ASSERTED	asserted	A	Every accountability response responds to some normative breach.	'accountability response' SubClassOf 'responds to' some 'normative breach'	false		b6393511a6bb
+c0027	ASSERTED	asserted	A	Every accountable agent is a material entity.	'accountable agent' SubClassOf 'material entity'	false		3783a40c4180
+c0028	ASSERTED	asserted	A	Every answerability answers for some normative breach.	answerability SubClassOf 'answers for' some 'normative breach'	false		4c590e77d245
+c0029	ASSERTED	asserted	A	Every answerability is a disposition.	answerability SubClassOf disposition	false		ccb17e33550d
+c0030	ASSERTED	asserted	A	Every apology is an accountability response.	apology SubClassOf 'accountability response'	false		51051dd51f5f
+c0031	ASSERTED	asserted	A	Every apology realizes some answerability.	apology SubClassOf realizes some answerability	false		a458a583d676
+c0032	ASSERTED	asserted	A	Every control capacity is a disposition.	'control capacity' SubClassOf disposition	false		fb49e3ac3178
+c0033	ASSERTED	asserted	A	Every displaced answerability is an answerability.	'displaced answerability' SubClassOf answerability	false		f5ee7235ef8d
+c0034	ASSERTED	asserted	A	Every irreversibly accountable agent is a material entity.	'irreversibly accountable agent' SubClassOf 'material entity'	false		4114349fd502
+c0035	ASSERTED	asserted	A	Every moral residue is a relational quality.	'moral residue' SubClassOf 'relational quality'	false		98580df3d766
+c0036	ASSERTED	asserted	A	Every moral residue is occasioned by some normative breach.	'moral residue' SubClassOf 'occasioned by' some 'normative breach'	false		07a959fc3c5a
+c0037	ASSERTED	asserted	A	Every narrative revision has as participant some accountability record.	'narrative revision' SubClassOf 'has participant' some 'accountability record'	false		dcc189f09cd5
+c0038	ASSERTED	asserted	A	Every narrative revision is an accountability response.	'narrative revision' SubClassOf 'accountability response'	false		1bb30326261b
+c0039	ASSERTED	asserted	A	Every norm is a generically dependent continuant.	norm SubClassOf 'generically dependent continuant'	false		d20add565599
+c0040	ASSERTED	asserted	A	Every normative breach is a process.	'normative breach' SubClassOf process	false		69871527dfeb
+c0041	ASSERTED	asserted	A	Every normative breach is attributed to some material entity.	'normative breach' SubClassOf 'attributed to' some 'material entity'	false		44d6ed1bfe26
+c0042	ASSERTED	asserted	A	Every normative breach violates some norm.	'normative breach' SubClassOf violates some norm	false		11ab20d6d89e
+c0043	ASSERTED	asserted	A	Every normative standing is a quality.	'normative standing' SubClassOf quality	false		1e0bfe18e8d4
+c0044	ASSERTED	asserted	A	Every refusal of amends is an accountability response.	'refusal of amends' SubClassOf 'accountability response'	false		324f4804fac8
+c0045	ASSERTED	asserted	A	Every refusal of amends realizes some answerability.	'refusal of amends' SubClassOf realizes some answerability	false		82e85140a9c7
+c0046	ASSERTED	asserted	A	Every repair capacity is a disposition.	'repair capacity' SubClassOf disposition	false		24346f9d6d61
+c0047	ASSERTED	asserted	A	Every repeat breach is a normative breach.	'repeat breach' SubClassOf 'normative breach'	false		2e720a886a6e
+c0048	ASSERTED	asserted	A	Every reset is an accountability response.	reset SubClassOf 'accountability response'	false		7e7125ae9631
+c0049	ASSERTED	asserted	A	Every reset realizes some resettability.	reset SubClassOf realizes some resettability	false		401fc2f9ac0c
+c0050	ASSERTED	asserted	A	Every resettability is a disposition.	resettability SubClassOf disposition	false		7eac7fdb76de
+c0051	ASSERTED	asserted	A	Every resettable artifact is a material entity.	'resettable artifact' SubClassOf 'material entity'	false		8884d479ec83
+c0052	ASSERTED	asserted	A	Every restitution is an accountability response.	restitution SubClassOf 'accountability response'	false		8eee196285f0
+c0053	ASSERTED	asserted	A	Every restitution realizes some answerability.	restitution SubClassOf realizes some answerability	false		28f353a7d2d4
+c0054	ASSERTED	asserted	A	Every restitution realizes some repair capacity.	restitution SubClassOf realizes some 'repair capacity'	false		3d1472482439
+c0055	ASSERTED	asserted	A	Every retraining is an accountability response.	retraining SubClassOf 'accountability response'	false		0167fbba8a3f
+c0056	ASSERTED	asserted	A	Every sanction is an accountability response.	sanction SubClassOf 'accountability response'	false		8967d4374c79
+c0057	ASSERTED	asserted	A	Every sanction realizes some answerability.	sanction SubClassOf realizes some answerability	false		967e2d762893
+c0058	ASSERTED	asserted	A	For any x and y: if x answers for y, then x is occasioned by y.	'answers for' SubPropertyOf 'occasioned by'	false		7cc0e339a284
+c0059	ASSERTED	asserted	A	For any x and y: if x is a repeat of y, then x is preceded by y.	'repeat of' SubPropertyOf 'preceded by'	false		e84a1a12c0ec
+c0060	ASSERTED	asserted	A	For any x and y: if x is attributed to y, then x has as participant y.	'attributed to' SubPropertyOf 'has participant'	false		dc360758e377
+c0061	ASSERTED	asserted	A	For any x and y: x is attributed to y exactly when y is an agent of x.	'attributed to' InverseOf 'agent of'	false		03a902187baa
+c0062	ASSERTED	asserted	A	No resettable artifact is a bearer of a moral residue.	'resettable artifact' SubClassOf not ('bearer of' some 'moral residue')	false		90e786f23c1b
+c0063	ASSERTED	asserted	A	No resettable artifact is a bearer of an answerability.	'resettable artifact' SubClassOf not ('bearer of' some answerability)	false		9aca7f21b3f6
+c0064	ASSERTED	asserted	A	Only a normative breach is a repeat of anything.	'repeat of' Domain 'normative breach'	false		0de317bfe5bc
+c0065	ASSERTED	asserted	A	Only a normative breach is attributed to anything.	'attributed to' Domain 'normative breach'	false		87293f5d69b5
+c0066	ASSERTED	asserted	A	Only a normative breach violates anything.	violates Domain 'normative breach'	false		20b731bcbc17
+c0067	ASSERTED	asserted	A	Only a normative breach wrongs anything.	wrongs Domain 'normative breach'	false		11947db5ba9a
+c0068	ASSERTED	asserted	A	Only a specifically dependent continuant is occasioned by anything.	'occasioned by' Domain 'specifically dependent continuant'	false		578f01a38951
+c0069	ASSERTED	asserted	A	Only an accountability record records anything.	records Domain 'accountability record'	false		d91a678e01e9
+c0070	ASSERTED	asserted	A	Only an accountability response responds to anything.	'responds to' Domain 'accountability response'	false		4cdbc26baa3a
+c0071	ASSERTED	asserted	A	Only an answerability answers for anything.	'answers for' Domain answerability	false		badee08108a9
+c0072	ASSERTED	asserted	A	Only an answerability is codified as anything.	'codified as' Domain answerability	false		d8f421fafee2
+c0073	ASSERTED	asserted	A	Whatever something answers for is a normative breach.	'answers for' Range 'normative breach'	false		a4f716bfd40c
+c0074	ASSERTED	asserted	A	Whatever something is a repeat of is a normative breach.	'repeat of' Range 'normative breach'	false		e2e6c691302a
+c0075	ASSERTED	asserted	A	Whatever something is attributed to is an independent continuant.	'attributed to' Range 'independent continuant'	false		7be31e2fa42e
+c0076	ASSERTED	asserted	A	Whatever something is codified as is a legal position.	'codified as' Range 'legal position'	false		38fac0dd30a3
+c0077	ASSERTED	asserted	A	Whatever something is occasioned by is a normative breach.	'occasioned by' Range 'normative breach'	false		3b56846825e7
+c0078	ASSERTED	asserted	A	Whatever something records is a process.	records Range process	false		f421f87353b9
+c0079	ASSERTED	asserted	A	Whatever something responds to is a normative breach.	'responds to' Range 'normative breach'	false		566e600f2ea7
+c0080	ASSERTED	asserted	A	Whatever something violates is a norm.	violates Range norm	false		ebab9f92565c
+c0081	ASSERTED	asserted	A	Whatever something wrongs is an independent continuant.	wrongs Range 'independent continuant'	false		bbfdad1e93fa

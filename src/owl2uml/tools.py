@@ -88,6 +88,73 @@ def convert_cmd() -> list[str] | None:
     return [j, heap, "-cp", jar, str(_HELPER_SRC)]
 
 
+_EXPLAIN_SRC = Path(__file__).resolve().parent / "java" / "O2uExplain.java"
+
+
+def explain_cmd() -> list[str] | None:
+    """Command prefix for the O2uExplain helper (one justification per
+    entailment, used by `owl2uml claims`), or None without Java + ROBOT."""
+    j, jar = java(), robot_jar()
+    if not (j and jar):
+        return None
+    heap = os.environ.get("OWL2UML_ROBOT_HEAP", "-Xmx4G")
+    cls = HELPER_DIR / "O2uExplain.class"
+    if not (cls.exists() and cls.stat().st_mtime >= _EXPLAIN_SRC.stat().st_mtime):
+        try:
+            HELPER_DIR.mkdir(parents=True, exist_ok=True)
+            subprocess.run([j, "-m", "jdk.compiler/com.sun.tools.javac.Main", "-nowarn",
+                            "-cp", jar, "-d", str(HELPER_DIR), str(_EXPLAIN_SRC)],
+                           capture_output=True, timeout=120)
+        except (OSError, subprocess.SubprocessError):
+            pass
+    if cls.exists():
+        return [j, heap, "-cp", os.pathsep.join([jar, str(HELPER_DIR)]), "O2uExplain"]
+    return [j, heap, "-cp", jar, str(_EXPLAIN_SRC)]
+
+
+_PROBE_SRC = Path(__file__).resolve().parent / "java" / "O2uProbe.java"
+PROBE_FACTORIES = {
+    "hermit": "org.semanticweb.HermiT.ReasonerFactory",
+    "pellet": "com.clarkparsia.pellet.owlapiv3.PelletReasonerFactory",
+}
+
+
+def pellet_classpath() -> str | None:
+    """Pellet 2.3 with its own OWL API 3, as bundled with owlready2."""
+    try:
+        import owlready2
+    except ImportError:
+        return None
+    d = Path(owlready2.__file__).resolve().parent / "pellet"
+    jars = sorted(str(p) for p in d.glob("*.jar"))
+    return os.pathsep.join(jars) if any("pellet" in Path(j).name for j in jars) else None
+
+
+def probe_cmd(engine: str) -> list[str] | None:
+    """Command prefix for the O2uProbe helper with ``engine`` (hermit: robot.jar,
+    OWL API 4; pellet: owlready2's Pellet, OWL API 3), or None when missing.
+    The same source is compiled once per classpath."""
+    j = java()
+    cp = robot_jar() if engine == "hermit" else pellet_classpath() if engine == "pellet" else None
+    if not (j and cp):
+        return None
+    heap = os.environ.get("OWL2UML_ROBOT_HEAP", "-Xmx4G")
+    out = PREFIX / f"o2u-probe-{engine}"
+    cls = out / "O2uProbe.class"
+    if not (cls.exists() and cls.stat().st_mtime >= _PROBE_SRC.stat().st_mtime):
+        try:
+            out.mkdir(parents=True, exist_ok=True)
+            subprocess.run([j, "-m", "jdk.compiler/com.sun.tools.javac.Main", "-nowarn",
+                            "-cp", cp, "-d", str(out), str(_PROBE_SRC)],
+                           capture_output=True, timeout=120)
+        except (OSError, subprocess.SubprocessError):
+            pass
+    if not cls.exists():
+        return None
+    return [j, heap, "-cp", os.pathsep.join([cp, str(out)]), "O2uProbe",
+            PROBE_FACTORIES[engine]]
+
+
 def robot_cmd() -> list[str] | None:
     """Command prefix that runs ROBOT, or None when Java or the jar is missing."""
     j, jar = java(), robot_jar()

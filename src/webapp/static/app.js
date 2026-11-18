@@ -37,7 +37,6 @@ function hideOverlay() { $("overlay").hidden = true; }
 async function renderFile(file) {
   if (!file) return;
   if (typeof O2uDiff !== "undefined" && O2uDiff.wanted()) return O2uDiff.run(file);   // diffui.js
-  if (typeof O2uClaims !== "undefined" && O2uClaims.wanted()) return O2uClaims.run(file);   // claimsui.js
   showOverlay("Parsing & laying out…");
   setStatus(`Uploading ${file.name} (${(file.size / 1024).toFixed(0)} KB)…`);
 
@@ -98,6 +97,7 @@ async function renderFile(file) {
   lastName = file.name.replace(/\.[^.]+$/, "") || "diagram";
   mountSvg(data.svg);
   resetStretch();
+  if (typeof O2uClaims !== "undefined") O2uClaims.onRender(file);   // claimsui.js
   setupModules(data);
   setupFlow(data);
   if (data.view === "flow") {
@@ -199,8 +199,6 @@ function mountSvg(svgText) {
   const vp = $("viewport");
   vp.innerHTML = svgText;
   vp.hidden = false;
-  $("claimsPane").hidden = true;
-  $("claimsBtn").classList.remove("active");
   $("dropzone").hidden = true;
   $("toolbar").hidden = false;
   $("hint").hidden = false;

@@ -34,7 +34,7 @@
       <span class="sep"></span>
       <button id="source" title="Show or hide the OWL source of the clicked class or line (s)" hidden>Source</button>
       <button id="viewToggle" title="Show the processes as a flow in swimlanes">Flow</button>
-      <button id="claimsBtn" title="List what the ontology asserts, entails, rules out and leaves open, in plain English">Claims</button>
+      <button id="claimsBtn" class="claims-btn" title="Show or hide the claims: what the ontology asserts and what follows from it, in plain English">Claims</button>
       <select id="module" title="Draw one module (with its context greyed), or an overview of the modules" hidden>
         <option value="">All modules</option>
       </select>
@@ -134,6 +134,9 @@
           <label title="Classify the ontology with a reasoner and show what it infers, in orange">
             <input type="checkbox" id="reason" /> run reasoner
           </label>
+          <label class="claims-choice" title="Also list, in a side panel, what the ontology asserts and what a reasoner infers from it, as plain-English sentences (takes 10-60 s)">
+            <input type="checkbox" id="showClaims" checked /> show claims (inferences &amp; assertions)
+          </label>
         </div>
         <div class="fmtrow">
           <label title="Print each class's definition (IAO_0000115, skos:definition or rdfs:comment) under its name">
@@ -149,7 +152,6 @@
             <option value="classes">Classes</option>
             <option value="flow">Flow (processes)</option>
             <option value="properties">Properties (hierarchy)</option>
-            <option value="claims">Claims (plain English, with reasoner)</option>
           </select>
           <label for="profile" title="Draw in a domain's own notation: BFO bands and bearer rows, the Hohfeld square, fewer labels (every axiom stays in the source panel)">Notation</label>
           <select id="profile">
@@ -183,7 +185,7 @@
     </section>
 
     <div id="viewport" class="viewport" hidden></div>
-    <div id="claimsPane" class="claims-pane" hidden></div>
+    <aside id="claimsPane" class="claims-pane" hidden aria-label="Claims"></aside>
     <aside id="sourcePanel" class="source-panel"></aside>
 
     <div id="overlay" class="overlay" hidden>

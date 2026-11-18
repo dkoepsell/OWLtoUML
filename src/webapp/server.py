@@ -379,6 +379,10 @@ from webapp import diff_api  # noqa: E402
 
 diff_api.register(app, _load_upload, _pins, _profile, _int_form)
 
+from webapp import claims_api  # noqa: E402
+
+claims_api.register(app, _load_upload)
+
 
 def main() -> None:
     port = int(os.environ.get("PORT", "5000"))

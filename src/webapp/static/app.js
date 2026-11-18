@@ -37,6 +37,7 @@ function hideOverlay() { $("overlay").hidden = true; }
 async function renderFile(file) {
   if (!file) return;
   if (typeof O2uDiff !== "undefined" && O2uDiff.wanted()) return O2uDiff.run(file);   // diffui.js
+  if (typeof O2uClaims !== "undefined" && O2uClaims.wanted()) return O2uClaims.run(file);   // claimsui.js
   showOverlay("Parsing & laying out…");
   setStatus(`Uploading ${file.name} (${(file.size / 1024).toFixed(0)} KB)…`);
 
@@ -198,6 +199,8 @@ function mountSvg(svgText) {
   const vp = $("viewport");
   vp.innerHTML = svgText;
   vp.hidden = false;
+  $("claimsPane").hidden = true;
+  $("claimsBtn").classList.remove("active");
   $("dropzone").hidden = true;
   $("toolbar").hidden = false;
   $("hint").hidden = false;
@@ -462,6 +465,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("clearFocus").addEventListener("click", () => interact && interact.clear());
   $("inferred").addEventListener("click", toggleInferred);
   $("view").addEventListener("change", () => { $("flowfiles").hidden = $("view").value !== "flow"; });
+  $("claimsBtn").addEventListener("click", () => O2uClaims.toggle());
   $("viewToggle").addEventListener("click", () => {
     if (!lastFile) return;
     $("view").value = $("view").value === "flow" ? "classes" : "flow";

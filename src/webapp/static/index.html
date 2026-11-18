@@ -12,6 +12,7 @@
   <script defer src="/static/loading.js"></script>
   <script defer src="/static/download.js"></script>
   <script defer src="/static/diffui.js"></script>
+  <script defer src="/static/claimsui.js"></script>
   <script defer src="/static/app.js"></script>
 </head>
 <body>
@@ -33,6 +34,7 @@
       <span class="sep"></span>
       <button id="source" title="Show or hide the OWL source of the clicked class or line (s)" hidden>Source</button>
       <button id="viewToggle" title="Show the processes as a flow in swimlanes">Flow</button>
+      <button id="claimsBtn" title="List what the ontology asserts, entails, rules out and leaves open, in plain English">Claims</button>
       <select id="module" title="Draw one module (with its context greyed), or an overview of the modules" hidden>
         <option value="">All modules</option>
       </select>
@@ -147,6 +149,7 @@
             <option value="classes">Classes</option>
             <option value="flow">Flow (processes)</option>
             <option value="properties">Properties (hierarchy)</option>
+            <option value="claims">Claims (plain English, with reasoner)</option>
           </select>
           <label for="profile" title="Draw in a domain's own notation: BFO bands and bearer rows, the Hohfeld square, fewer labels (every axiom stays in the source panel)">Notation</label>
           <select id="profile">
@@ -180,6 +183,7 @@
     </section>
 
     <div id="viewport" class="viewport" hidden></div>
+    <div id="claimsPane" class="claims-pane" hidden></div>
     <aside id="sourcePanel" class="source-panel"></aside>
 
     <div id="overlay" class="overlay" hidden>

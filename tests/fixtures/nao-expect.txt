@@ -1,0 +1,4 @@
+# Candidate axioms for owl2uml claims --expect (G6), checked against tests/fixtures/nao.ttl
+'irreversibly accountable agent' SubClassOf 'accountable agent'
+sanction SubClassOf 'responds to' some 'normative breach'
+'resettable artifact' DisjointWith 'accountable agent'

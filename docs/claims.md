@@ -204,6 +204,13 @@ library with HermiT), at most `--max-explain` of them; the rest are marked
 `--max-probes` bounds the planned checks, which is the worst case
 (|N|x|F| + 2|N|x|P|x|F| + ...). NAO plans about 22,800 and sends about
 17,000 including the inheritance checks.
+The full Pizza ontology (99 classes) plans about 167,000 checks and takes
+about 100 s with both reasoners.
+
+`--assertions-only` skips the reasoners and lists only the ASSERTED tier, at
+any size. The web app's Claims panel falls back to it when an ontology is over
+its check budget (`CLAIMS_MAX_CHECKS`, default 500,000) or the reasoners do not
+finish within `CLAIMS_TIMEOUT_S` (default 600 s), and says so in the panel.
 
 An SVG is refused (exit 2) with the IRI of the ontology it was drawn from: a
 diagram leaves axioms out, so claims are never computed from one.

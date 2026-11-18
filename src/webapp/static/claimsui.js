@@ -90,11 +90,23 @@ const O2uClaims = (() => {
     const pane = el("claimsPane");
     if (st.loading) {
       const s = Math.round((Date.now() - st.t0) / 1000);
+      const j = st.job || {};
+      const clock = (n) => (n >= 60 ? `${Math.floor(n / 60)}m ${String(n % 60).padStart(2, "0")}s` : `${n}s`);
+      let msg = "Uploading and reading the ontology…";
+      if (j.state === "queued") {
+        msg = "Waiting for another claims check on the server to finish…";
+      } else if (j.mode === "assertions") {
+        msg = "Listing what the ontology states (too large for the reasoner check)…";
+      } else if (j.state) {
+        const est = j.planned > 100000 ? "several minutes" : j.planned > 20000 ? "about a minute" : "under a minute";
+        msg = `HermiT and Pellet are checking which statements about the ${j.classes} classes follow
+          from the ontology, which it rules out and which it leaves open
+          (up to ${Number(j.planned).toLocaleString()} checks; usually ${est}, at most
+          ${Math.round(j.timeout / 60)} minutes).`;
+      }
       pane.innerHTML = head(`<div class="claims-busy"><span class="spinner"></span>
-        <div><b>Generating claims… ${s}s</b><br>
-        HermiT and Pellet are checking which statements follow from the ontology,
-        which it rules out and which it leaves open. This usually takes 10–60 seconds.
-        You can keep using the diagram meanwhile.</div></div>`);
+        <div><b>Generating claims… ${clock(s)}</b><br>${msg}<br>
+        <span class="claims-hint">You can keep using the diagram meanwhile.</span></div></div>`);
     } else if (st.error) {
       pane.innerHTML = head(`<div class="claims-error"><b>No claims.</b> ${esc(st.error)}</div>
         <button id="claimsRetry">Try again</button>`);
@@ -106,14 +118,16 @@ const O2uClaims = (() => {
       const vis = recs.filter((r) => show[STATUS[r.status][1]]);
       const groups = ORDER.map((s) => [s, vis.filter((r) => r.status === s)]).filter(([, g]) => g.length);
       pane.innerHTML = head(`
-        <p class="claims-hint">${inf} inferred and ${recs.length - inf} asserted, checked by
-          ${Object.keys(rep.reasoners || {}).join(" and ") || "the reasoners"}${rep.seconds_total != null ? ` in ${rep.seconds_total}s` : ""}.
+        <p class="claims-hint">${rep.assertions_only ? `${recs.length} assertions; no reasoner run.`
+          : `${inf} inferred and ${recs.length - inf} asserted, checked by
+          ${Object.keys(rep.reasoners || {}).join(" and ") || "the reasoners"}${rep.seconds_total != null ? ` in ${rep.seconds_total}s` : ""}.`}
           Click a claim for its Manchester form and the axioms behind it.</p>
         <div class="claims-filter">Show
           <label><input type="checkbox" data-f="inferred" ${show.inferred ? "checked" : ""}/> inferences (${inf})</label>
           <label><input type="checkbox" data-f="asserted" ${show.asserted ? "checked" : ""}/> assertions (${recs.length - inf})</label>
         </div>
         <div class="claims-dl">Download <button data-dl="txt">.txt</button><button data-dl="tsv">.tsv</button><button data-dl="jsonl">.jsonl</button></div>
+        ${st.data.note ? `<p class="claims-note">${esc(st.data.note)}</p>` : ""}
         ${(st.data.warnings || []).map((w) => `<p class="claims-warn">${esc(w)}</p>`).join("")}
         <div class="claims-list">
         ${groups.length ? "" : '<p class="claims-hint">Nothing to show with these filters.</p>'}
@@ -144,7 +158,7 @@ const O2uClaims = (() => {
     if (!force && st.file === file && (st.data || st.loading)) return render();
     const token = ++st.token;
     clearInterval(st.timer);
-    st = { ...st, file, data: null, error: null, loading: true, t0: Date.now(), token };
+    st = { ...st, file, data: null, error: null, loading: true, t0: Date.now(), token, job: null };
     st.timer = setInterval(() => { if (st.token === token && st.loading) render(); }, 1000);
     render();
     const fd = new FormData();
@@ -152,16 +166,27 @@ const O2uClaims = (() => {
     fd.append("format", el("format").value);
     fd.append("imports", el("imports").value);
     let data = null, error = null;
+    const failed = (res, d) => (d && d.error && (d.error + (d.detail ? `\n${d.detail}` : ""))) ||
+      `Server error (${res.status})`;
     try {
-      const res = await fetch("/api/claims", { method: "POST", body: fd });
+      let res = await fetch("/api/claims", { method: "POST", body: fd });
       data = await res.json().catch(() => null);
-      if (!res.ok || !data || data.error) {
-        error = (data && (data.error + (data.detail ? `\n${data.detail}` : ""))) ||
-          `Server error (${res.status})${res.status === 502 || res.status === 504 ? ": the check took too long" : ""}`;
-        data = null;
+      if (!res.ok || !data || data.error) throw new Error(failed(res, data));
+      const id = data.job;
+      st.job = data;
+      while (token === st.token) {
+        await new Promise((r) => setTimeout(r, 2000));
+        if (token !== st.token) return;
+        res = await fetch(`/api/claims/${id}`);
+        data = await res.json().catch(() => null);
+        if (!res.ok || !data) throw new Error(failed(res, data));
+        st.job = data;
+        if (data.state === "done") break;
       }
+      if (data.error) throw new Error(failed(res, data));
     } catch (e) {
-      error = `Network error: ${e.message}`;
+      error = e.message.startsWith("Failed to fetch") ? `Network error: ${e.message}` : e.message;
+      data = null;
     }
     if (token !== st.token) return;          // another ontology was opened meanwhile
     clearInterval(st.timer);

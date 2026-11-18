@@ -84,6 +84,8 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--max-explain", type=int, default=200, metavar="N",
                     help="justifications to compute at most (default 200)")
     ap.add_argument("--no-explain", action="store_true", help="skip justifications")
+    ap.add_argument("--assertions-only", action="store_true",
+                    help="list only what the ontology states (no reasoner, any size)")
     ap.add_argument("--verb-map", metavar="FILE",
                     help="TSV: property IRI or label -> verb phrase (e.g. 'is a bearer of')")
     ap.add_argument("--article-map", metavar="FILE", help="TSV: label -> article")
@@ -136,6 +138,9 @@ def main(argv: list[str]) -> int:
         return EXIT_USAGE
     for c in expect:
         c["lhs_text"], c["rhs_text"] = v.m(c["lhs"], c["graph"]), v.m(c["rhs"], c["graph"])
+
+    if args.assertions_only:
+        return _assertions_only(g, sig, v, args, out_dir, loaded, namespaces, fmts)
 
     planned = analyze.plan(sig, len(expect))
     print(f"claims: {len(sig.native)} native classes, {len(sig.fillers)} filler classes, "
@@ -212,6 +217,25 @@ def main(argv: list[str]) -> int:
     c = report["records"]
     print(f"wrote {out_dir}/  ({len(recs)} records: "
           + ", ".join(f"{n} {k}" for k, n in c.items()) + f"; {explained} justified)")
+    return 0
+
+
+def _assertions_only(g, sig, v, args, out_dir, loaded, namespaces, fmts) -> int:
+    """The ASSERTED tier alone: needs no reasoner, so it works at any size."""
+    recs = _dedupe(records.asserted_records(g, sig, v))
+    recs.sort(key=lambda r: (records.STATUS_ORDER[r["status"]], r["grammar"], r["text"]))
+    for i, r in enumerate(recs, 1):
+        r["id"] = f"c{i:04d}"
+    report = {
+        "ontology": loaded.ontology_iri, "source": args.input, "native_namespaces": namespaces,
+        "signature": {"native": len(sig.native), "fillers": len(sig.fillers),
+                      "properties": len(sig.props), "nested": len(sig.nested)},
+        "checks_planned": analyze.plan(sig, 0), "reasoners": {}, "assertions_only": True,
+        "records": _counts(recs), "explained": 0, "warnings": [],
+    }
+    os.makedirs(out_dir, exist_ok=True)
+    _write(out_dir, recs, fmts, report)
+    print(f"wrote {out_dir}/  ({len(recs)} asserted records; no reasoner run)")
     return 0
 
 

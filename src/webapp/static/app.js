@@ -15,7 +15,11 @@ let lastSvgText = null;
 let lastName = "diagram";
 let lastFile = null;
 let lastFileSent = null;
-let lastForm = null;      // the last render's request, reused by figure exports   // the sidecar upload applies to the first drawing only       // kept so the view can be switched without re-choosing it
+let lastForm = null;
+// Classes the user placed, kept across redraws of the same document. A class
+// drawn at its saved place no longer looks moved, so without this a second
+// redraw (a scratchpad keystroke, a module switch) would let dot move it back.
+let carriedPins = {};      // the last render's request, reused by figure exports   // the sidecar upload applies to the first drawing only       // kept so the view can be switched without re-choosing it
 
 // Edit mode (static/edit.js): a list of edits applied server-side on re-layout/export.
 let editor = null;
@@ -25,6 +29,7 @@ let exportedAt = 0;        // edit count when last exported, for the unsaved-edi
 function setStatus(msg, isError = false) {
   const s = $("status");
   $("statusText").textContent = msg;
+  $("statusText").title = msg;
   s.classList.toggle("error", isError);
 }
 function showOverlay(msg) {
@@ -34,14 +39,21 @@ function showOverlay(msg) {
 function hideOverlay() { $("overlay").hidden = true; }
 
 // ---- upload / render -------------------------------------------------------
-async function renderFile(file) {
+// opts.quick: a live scratchpad preview (no overlay, no reasoner, no claims).
+// opts.signal: an AbortSignal, so a newer draft can cancel this request.
+// Returns {ok}, {ok: false, error, status, kept}, or {aborted}.
+async function renderFile(file, opts = {}) {
   if (!file) return;
+  const quick = !!opts.quick;
   if (typeof O2uDiff !== "undefined" && O2uDiff.wanted()) return O2uDiff.run(file);   // diffui.js
-  showOverlay("Parsing & laying out…");
-  setStatus(`Uploading ${file.name} (${(file.size / 1024).toFixed(0)} KB)…`);
+  // Every scratchpad draft is the same document: dragged classes stay put,
+  // edits carry over, and nothing asks to discard them.
+  const same = file === lastFile || !!(file.o2uScratch && lastFile && lastFile.o2uScratch);
+  if (!quick) showOverlay("Parsing & laying out…");
+  setStatus(file.o2uScratch ? "Drawing the scratchpad…" : `Uploading ${file.name} (${(file.size / 1024).toFixed(0)} KB)…`);
 
   let restore = null;
-  if (file !== lastFile && editor) {
+  if (!same && editor) {
     if (editor.count() > exportedAt && !confirm("Discard your unexported edits to the current ontology?")) {
       hideOverlay(); setStatus("Kept the current ontology"); return;
     }
@@ -50,13 +62,15 @@ async function renderFile(file) {
   }
   // Saved positions: moved classes stay put when the same ontology is drawn
   // again (reasoner, module, options); a new ontology may bring a sidecar.
-  const layout = file === lastFile && interact ? pinnedOnly(interact.layout()) : null;
-  if (file !== lastFile) $("module").value = "";   // a new ontology starts whole
+  const moved = same && interact ? pinnedOnly(interact.layout()) : {};
+  const layout = same ? { ...carriedPins, ...moved } : null;
+  carriedPins = layout || {};
+  if (!same) $("module").value = "";   // a new ontology starts whole
   lastFile = file;
   const flow = $("view").value === "flow";
   const fd = new FormData();
   fd.append("file", file);
-  fd.append("format", $("format").value);
+  fd.append("format", file.o2uFormat || $("format").value);
   fd.append("imports", $("imports").value);
   fd.append("aspect", stageAspect());
   if ($("module").value) fd.append("module", $("module").value);
@@ -64,7 +78,7 @@ async function renderFile(file) {
   else if (file !== lastFileSent && $("layoutFile").files[0]) fd.append("layout", $("layoutFile").files[0]);
   lastFileSent = file;
   if ($("keepUnused").checked) fd.append("keep_unused", "1");
-  if ($("reason").checked) fd.append("reason", "auto");
+  if ($("reason").checked && !quick) fd.append("reason", "auto");
   if ($("definitions").checked) fd.append("definitions", "1");
   fd.append("profile", $("profile").value);
   if ($("chains").checked) fd.append("chains", "1");
@@ -80,24 +94,26 @@ async function renderFile(file) {
   lastForm = fd;
   let res, data;
   try {
-    res = await fetch("/api/render", { method: "POST", body: fd });
+    res = await fetch("/api/render", { method: "POST", body: fd, signal: opts.signal });
     data = await res.json();
   } catch (e) {
     hideOverlay();
+    if (e.name === "AbortError") return { aborted: true };
     setStatus(`Network error: ${e.message}`, true);
-    return;
+    return { ok: false, error: `Network error: ${e.message}` };
   }
   hideOverlay();
 
   if (!res.ok || data.error) {
-    setStatus(data.error || `Server error (${res.status})`, true);
-    return;
+    const error = data.error || `Server error (${res.status})`;
+    setStatus(error, true);
+    return { ok: false, error, status: res.status, kept: !!svgEl };   // the last drawing stays up
   }
   lastSvgText = data.svg;
   lastName = file.name.replace(/\.[^.]+$/, "") || "diagram";
   mountSvg(data.svg);
-  resetStretch();
-  if (typeof O2uClaims !== "undefined") O2uClaims.onRender(file);   // claimsui.js
+  if (!same || !quick) resetStretch();
+  if (typeof O2uClaims !== "undefined" && !quick) O2uClaims.onRender(file);   // claimsui.js
   setupModules(data);
   setupFlow(data);
   if (data.view === "flow") {
@@ -105,7 +121,7 @@ async function renderFile(file) {
     const ev = f.cases ? ` · ${f.cases} cases, ${f.deviations} undesigned path(s)` : "";
     const sh = f.shapes ? ` · ${f.findings} SHACL finding(s)` : "";
     setStatus(`${file.name} — flow: ${f.steps} steps in ${f.lanes} lanes${ev}${sh}`);
-    return;
+    return { ok: true };
   }
   const pruned = (data.pruned ? ` · ${data.pruned} unused imported classes left out` : "") +
     (data.profile ? ` · notation: ${data.profile.profiles.join(", ")}, ${data.profile.labels} line labels` : "");
@@ -124,6 +140,7 @@ async function renderFile(file) {
     editor.load(restore);
     setEditMode(true);
   }
+  return { ok: true };
 }
 
 // ---- edit mode -----------------------------------------------------------------
@@ -148,6 +165,7 @@ function setEditMode(v) {
 }
 
 function updateEditCount(nSteps) {
+  if (typeof O2uScratch !== "undefined") O2uScratch.onEdits(nSteps);   // scratchpad.js
   $("editCount").textContent = `${nSteps} edit${nSteps === 1 ? "" : "s"}`;
   $("undo").disabled = !nSteps;
   $("editToggle").classList.toggle("has-edits", nSteps > 0);
@@ -453,7 +471,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("stretchX").addEventListener("input", () => onStretch("x"));
   $("module").addEventListener("change", () => { if (lastFile) renderFile(lastFile); });
   $("saveLayout").addEventListener("click", () => {
-    if (interact) interact.saveLayout(`${lastName}.layout.json`);
+    if (interact) interact.saveLayout(`${lastName}.layout.json`, Object.keys(carriedPins));
   });
   $("stretchY").addEventListener("input", () => onStretch("y"));
   $("download").addEventListener("click", () => {
@@ -481,13 +499,13 @@ window.addEventListener("DOMContentLoaded", () => {
   // would type into it). Release focus when the diagram is pressed.
   $("viewport").addEventListener("pointerdown", () => {
     const a = document.activeElement;
-    if (a && a.tagName === "INPUT") a.blur();
+    if (a && /^(INPUT|TEXTAREA)$/.test(a.tagName)) a.blur();
   }, true);
   document.addEventListener("keydown", (e) => {
     if (e.key === "e" && !/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName) && !e.ctrlKey && !e.metaKey &&
         !$("editToggle").hidden) setEditMode(!editor.isOn());
-    if (e.key === "i" && e.target.tagName !== "INPUT") toggleInferred();
-    if (e.key === "p" && !/^(INPUT|SELECT)$/.test(e.target.tagName) && !$("practiced").hidden) {
+    if (e.key === "i" && !/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) toggleInferred();
+    if (e.key === "p" && !/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName) && !$("practiced").hidden) {
       // interact.js toggles the class; update the button once it has
       setTimeout(() => {
         $("practiced").textContent = svgEl && svgEl.classList.contains("o2u-designed") ? "Show practiced" : "Show designed";
@@ -497,6 +515,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("spread").addEventListener("click", spreadToFit);
   $("resetLayout").addEventListener("click", () => {
     if (!interact) return;
+    carriedPins = {};      // the next redraw lays everything out afresh
     interact.reset();
     refit();
   });

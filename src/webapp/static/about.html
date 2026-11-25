@@ -249,6 +249,30 @@
         Data Science in Action</em> (2nd ed.). Springer.</li>
     </ul>
 
+    <h3>Scratchpad: drafting in text</h3>
+    <p>
+      The <strong>Scratchpad</strong> (start screen or toolbar) is a text panel
+      beside the diagram for writing or pasting OWL in any syntax the app reads.
+      The text goes through exactly the path an uploaded file does, so notation
+      profiles, modules, the flow view, edit mode, claims and every download work
+      on a draft. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> draws it with every option on
+      the start screen; <em>live</em> redraws after a pause in typing, leaving out
+      the reasoner and the claims, which take too long to run on every pause.
+      Turtle is parsed in Python and redraws almost at once; Manchester and
+      Functional syntax go through ROBOT and take a few seconds.
+    </p>
+    <p>
+      Classes you drag keep their places across redraws: their positions are sent
+      with each draft as pins, the same mechanism as a saved
+      <code>.layout.json</code>. In Turtle, the common prefixes
+      (<code>owl:</code>, <code>rdfs:</code>, <code>rdf:</code>, <code>xsd:</code>,
+      <code>skos:</code>, <code>obo:</code> and the empty prefix) are declared for
+      you when you use them without declaring them, and parser errors are reported
+      against your own line numbers. If a draft does not parse, the last drawing
+      stays up. Edits made on the diagram in edit mode can be written back into
+      the text (as Turtle). Drafts are kept in the browser between visits.
+    </p>
+
     <h2>2. Layered layout (layer assignment &amp; Graphviz <code>dot</code>)</h2>
     <p>
       Each class's rank is computed as <code>1 + max(parent depths)</code> over

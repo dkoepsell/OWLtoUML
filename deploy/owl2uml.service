@@ -8,6 +8,8 @@ Group=www-data
 WorkingDirectory=/opt/owl2uml/src
 Environment=PORT=5002
 Environment=MAX_UPLOAD_MB=25
+# Renders per client per minute (scratchpad live preview); 0 turns the limit off.
+Environment=RENDER_RATE_PER_MIN=120
 ExecStart=/opt/owl2uml/.venv/bin/gunicorn \
     --workers 3 --timeout 120 \
     --bind 127.0.0.1:5002 \

@@ -5,10 +5,14 @@ the browser handles pan/zoom/search.
 """
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 import re
 import sys
+import threading
+import time
+from collections import deque
 
 from flask import Flask, Response, request, jsonify, send_from_directory
 
@@ -37,6 +41,45 @@ _max_mb = int(os.environ.get("MAX_UPLOAD_MB", "25"))
 app.config["MAX_CONTENT_LENGTH"] = _max_mb * 1024 * 1024
 # Wall-clock budget for loading one ontology (conversion, imports, fetching).
 LOAD_TIMEOUT = float(os.environ.get("LOAD_TIMEOUT_S", "60"))
+# Renders per client per minute (the scratchpad's live preview draws on every
+# pause in typing). 0 turns the limit off. Counted per gunicorn worker, so the
+# real ceiling is this times the number of workers.
+RENDER_RATE = int(os.environ.get("RENDER_RATE_PER_MIN", "120"))
+
+_hits: dict[str, deque] = {}
+_hits_lock = threading.Lock()
+
+
+def _client() -> str:
+    """The caller's address. X-Forwarded-For is trusted only from a proxy on
+    this machine or the private network (Caddy), never from the open web."""
+    addr = request.remote_addr or "?"
+    try:
+        local = ipaddress.ip_address(addr).is_private or ipaddress.ip_address(addr).is_loopback
+    except ValueError:
+        local = False
+    fwd = request.headers.get("X-Forwarded-For", "")
+    if local and fwd:
+        return fwd.split(",")[0].strip() or addr
+    return addr
+
+
+def _rate_limited() -> bool:
+    """Sliding one-minute window per client; True when this request is over."""
+    if RENDER_RATE <= 0:
+        return False
+    now, key = time.monotonic(), _client()
+    with _hits_lock:
+        q = _hits.setdefault(key, deque())
+        while q and now - q[0] > 60:
+            q.popleft()
+        if len(q) >= RENDER_RATE:
+            return True
+        q.append(now)
+        if len(_hits) > 10000:          # forget idle clients now and then
+            for k in [k for k, v in _hits.items() if not v or now - v[-1] > 60]:
+                del _hits[k]
+    return False
 
 
 def _profile(names: str, graph):
@@ -101,6 +144,8 @@ def about():
 
 @app.post("/api/render")
 def render():
+    if _rate_limited():
+        return jsonify(error="too many drawings in the last minute: wait a few seconds and try again"), 429
     fmt = request.form.get("format") or None
     fmt = None if fmt in (None, "", "auto") else fmt
 

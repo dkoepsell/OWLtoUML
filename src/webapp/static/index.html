@@ -13,6 +13,7 @@
   <script defer src="/static/download.js"></script>
   <script defer src="/static/diffui.js"></script>
   <script defer src="/static/claimsui.js"></script>
+  <script defer src="/static/scratchpad.js"></script>
   <script defer src="/static/app.js"></script>
 </head>
 <body>
@@ -34,6 +35,7 @@
       <span class="sep"></span>
       <button id="source" title="Show or hide the OWL source of the clicked class or line (s)" hidden>Source</button>
       <button id="viewToggle" title="Show the processes as a flow in swimlanes">Flow</button>
+      <button id="scratchBtn" title="Draft or paste OWL and see it drawn">Scratchpad</button>
       <button id="claimsBtn" class="claims-btn" title="Show or hide the claims: what the ontology asserts and what follows from it, in plain English">Claims</button>
       <select id="module" title="Draw one module (with its context greyed), or an overview of the modules" hidden>
         <option value="">All modules</option>
@@ -93,6 +95,7 @@
           Choose file
           <input type="file" id="file" accept=".owl,.ttl,.rdf,.xml,.n3,.nt,.jsonld,.json,.trig,.owx,.omn,.ofn,.obo" hidden />
         </label>
+        <button type="button" id="scratchStart" class="scratch-start" title="Write or paste OWL (Turtle, Manchester, Functional, RDF/XML…) and see it drawn as you go">or draft in the scratchpad</button>
         <form class="fmtrow iriform" id="iriForm">
           <label for="iri">or load from IRI</label>
           <input type="url" id="iri" placeholder="https://w3id.org/…/ontology.owl" />
@@ -185,6 +188,42 @@
     </section>
 
     <div id="viewport" class="viewport" hidden></div>
+    <aside id="scratchPane" class="scratch-pane" hidden aria-label="Scratchpad">
+      <div class="scratch-top">
+        <h2>Scratchpad</h2>
+        <button id="scratchClose" class="claims-x" title="Close the scratchpad (your text is kept)">&times;</button>
+      </div>
+      <div class="scratch-bar">
+        <select id="scratchTemplate" title="Start from a template, or copy in the ontology that is open">
+          <option value="">Start from…</option>
+          <option value="turtle">BFO starter (Turtle)</option>
+          <option value="omn">BFO starter (Manchester)</option>
+          <option value="current">the ontology that is open</option>
+          <option value="blank">blank</option>
+        </select>
+        <select id="scratchSyntax" title="Syntax of the text (auto-detect looks at how it starts)">
+          <option value="auto">auto-detect</option>
+          <option value="turtle">Turtle</option>
+          <option value="omn">Manchester</option>
+          <option value="ofn">Functional</option>
+          <option value="xml">RDF/XML</option>
+          <option value="owx">OWL/XML</option>
+          <option value="json-ld">JSON-LD</option>
+        </select>
+        <label class="scratch-live" title="Redraw after a pause in typing (without the reasoner or claims). Turtle is fastest; Manchester and Functional go through ROBOT and take a few seconds.">
+          <input type="checkbox" id="scratchLive" /> live
+        </label>
+        <button id="scratchRender" class="primary" title="Draw with every option on the start screen (Ctrl+Enter)">Render</button>
+      </div>
+      <div class="scratch-editor">
+        <pre id="scratchGutter" class="scratch-gutter" aria-hidden="true"></pre>
+        <textarea id="scratchText" spellcheck="false" wrap="off" autocomplete="off" autocapitalize="off"
+          placeholder="Type or paste OWL here, or pick a template above.&#10;&#10;Turtle: owl:, rdfs:, obo: and : prefixes you forget to declare are added for you.&#10;Ctrl+Enter draws it."></textarea>
+      </div>
+      <div id="scratchMsg" class="scratch-msg"></div>
+      <button id="scratchPull" class="scratch-pull" hidden title="Write the edits made on the diagram into the text, then redraw">Write diagram edits into the text</button>
+      <div id="scratchResize" class="scratch-resize" title="Drag to resize"></div>
+    </aside>
     <aside id="claimsPane" class="claims-pane" hidden aria-label="Claims"></aside>
     <aside id="sourcePanel" class="source-panel"></aside>
 

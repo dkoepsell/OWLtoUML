@@ -45,6 +45,7 @@ header {
 .toolbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;          /* narrower windows: a second row, not buttons off-screen */
   gap: 0.4rem;
   flex: 1;
 }
@@ -188,6 +189,10 @@ footer#status {
 }
 footer#status.error { color: #b3261e; }
 footer#status .hint { flex: 1; text-align: center; opacity: 0.8; }
+/* One line each: a long parser error must not push the diagram up.
+   The full message is in the tooltip (and, for drafts, in the scratchpad). */
+footer#status #statusText, footer#status .hint { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+footer#status #statusText { flex: 0 1 auto; max-width: 60%; }
 footer#status .about-link {
   color: var(--accent, #3a5a8c);
   text-decoration: none;
@@ -296,7 +301,43 @@ svg .o2u-temp { stroke: #b5541c; stroke-width: 2; stroke-dasharray: 4 3; pointer
 .claim--undetermined, h3.claim--undetermined { border-left-color: #c9a227; }
 .claim--asserted, h3.claim--asserted { border-left-color: #9a958a; }
 #claimsBtn { font-weight: 600; border-color: var(--accent); color: var(--accent); }
-#claimsBtn.active { background: var(--accent); color: #fff; }
+#claimsBtn.active, #scratchBtn.active { background: var(--accent); color: #fff; }
 #claimsBtn.busy { background-image: linear-gradient(90deg, transparent, rgba(255,210,74,0.55), transparent);
   background-size: 200% 100%; animation: claims-busy 1.4s linear infinite; }
 @keyframes claims-busy { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* Scratchpad: draft or paste OWL on the left, the drawing on the right */
+#stage { --scratch-w: min(460px, 45%); }
+.with-scratch .viewport, .with-scratch .dropzone { left: var(--scratch-w); }
+.scratch-start { margin-left: 0.6rem; background: none; border: none; color: var(--accent); text-decoration: underline;
+  font-size: 0.88rem; padding: 0.3rem 0.4rem; }
+.scratch-start:hover { background: none; color: var(--accent-ink); }
+.scratch-pane { position: absolute; top: 0; left: 0; bottom: 0; width: var(--scratch-w); z-index: 6;
+  display: flex; flex-direction: column; gap: 0.45rem; padding: 0.7rem 0.8rem 0.8rem;
+  background: var(--bg); border-right: 1px solid var(--line); box-shadow: 4px 0 12px rgba(0,0,0,0.06); }
+.scratch-top { display: flex; align-items: baseline; justify-content: space-between; }
+.scratch-top h2 { margin: 0; font-size: 1.05rem; }
+.scratch-bar { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; font-size: 0.85rem; }
+.scratch-bar select { font: inherit; padding: 0.3rem 0.35rem; border: 1px solid var(--line); border-radius: 5px;
+  background: var(--panel); max-width: 11rem; }
+.scratch-live { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--muted); }
+.scratch-bar .primary { margin-left: auto; }
+.scratch-editor { flex: 1; min-height: 0; display: flex; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--panel); overflow: hidden; }
+.scratch-editor:focus-within { border-color: var(--accent); }
+.scratch-gutter, .scratch-editor textarea { margin: 0; font: 12.5px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  padding: 0.5rem 0.4rem; }
+.scratch-gutter { flex: none; min-width: 2.6rem; text-align: right; color: #b0a999; background: #faf8f3;
+  border-right: 1px solid var(--line); overflow: hidden; user-select: none; }
+.scratch-gutter b { color: #fff; background: #c0392b; border-radius: 3px; padding: 0 0.2rem; font-weight: 600; }
+.scratch-editor textarea { flex: 1; min-width: 0; border: none; outline: none; resize: none; tab-size: 4;
+  white-space: pre; overflow: auto; color: var(--ink); background: transparent; }
+.scratch-msg { min-height: 1.2em; font-size: 0.8rem; color: var(--muted); line-height: 1.4; word-break: break-word;
+  max-height: 7.5em; overflow-y: auto; }
+.scratch-msg--ok { color: #2e7d4f; }
+.scratch-msg--busy { color: var(--muted); font-style: italic; }
+.scratch-msg--error { color: #b03a2e; }
+.scratch-msg--link { cursor: pointer; text-decoration: underline dotted; }
+.scratch-pull { align-self: flex-start; }
+.scratch-resize { position: absolute; top: 0; right: -4px; bottom: 0; width: 8px; cursor: ew-resize; }
+.scratch-resize:hover { background: rgba(58, 90, 140, 0.15); }

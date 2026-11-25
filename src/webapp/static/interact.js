@@ -525,8 +525,12 @@ g.node.oi-sel { filter: drop-shadow(0 0 5px #f0a800) drop-shadow(0 0 2px #f0a800
     }
 
     // Save the layout as a file (works in a downloaded SVG opened on its own).
-    function saveLayout(name) {
-      const blob = new Blob([JSON.stringify(layout(), null, 1)], { type: "application/json" });
+    // keep: IRIs to mark pinned even where they sit where they were drawn
+    // (the web app passes classes it already pinned in an earlier drawing).
+    function saveLayout(name, keep) {
+      const out = layout();
+      for (const iri of keep || []) if (out[iri]) out[iri].pinned = true;
+      const blob = new Blob([JSON.stringify(out, null, 1)], { type: "application/json" });
       const a = doc.createElementNS("http://www.w3.org/1999/xhtml", "a");
       a.href = URL.createObjectURL(blob);
       a.download = name || "diagram.layout.json";
